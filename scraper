@@ -1,64 +1,10 @@
-#import all the required modules
 import re
-import csv
-from urllib.request import urlopen
 from bs4 import BeautifulSoup
 import sys
 import warnings
-from requests_html import HTMLSession
 import requests
 
-# #declare a session object
-# session = HTMLSession()
-#
-# #ignore warnings
-# if not sys.warnoptions:
-#     warnings.simplefilter("ignore")
-#
-# internal_urls = []
-#
-# r = requests.get("http://www.kyliecosmetics.com/sitemap_products_1.xml?from=4083591943&to=2373915377743")
-# xml = r.text
-#
-# soup = BeautifulSoup(xml)
-# url_xmls = soup.find_all("url")
-# for url in url_xmls:
-#     internal_urls.append(url.findNext("loc").text)
-#
-# headers = {
-#         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
-#     }
-#
-# all_items=[]
-#
-# for url in internal_urls:
-#     item_array=[]
-#     response = session.get(url, headers=headers, verify=False)
-#
-#     price = response.html.find("span", containing='price')
-#
-#     name = response.html.find('h1', first = True)
-#     if name != None:
-#         picture = response.html.find('img', containing=name.text)
-#
-#     if price != None:
-#         print(price)
-#     else:
-#         print('price none')
-#     if name != None:
-#         print(name.text)
-#     else:
-#         print('name none')
-#     if picture != None:
-#         for pic in picture:
-#             print(pic.html)
-#     else:
-#         print('pitcure none')
-#
-# print(all_items)
-
-
-r = requests.get("http://www.fentybeauty.com/sitemap_0.xml")
+r = requests.get("http://www.jeffreestarcosmetics.com/sitemap_products_1.xml?from=389773867&to=2363974451283")
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 xml = r.text
@@ -78,18 +24,37 @@ for url in internal_urls:
     page = requests.get(url)
     soup = BeautifulSoup(page.content, 'html.parser')
 
-    price = soup.find("span", {"class": re.compile("price")})
+    price = soup.find_all("span", {"class": re.compile("price")})
+
+    if price == []:
+        price = soup.find_all("p", {"class": re.compile("price")})
     if price == None:
-        price = soup.find("p", {"class": re.compile("price")})
-    if price == None:
-        price = soup.find("div", {"class": re.compile("price")})
+        price = soup.find_all("div", {"class": re.compile("price")})
     if price != None:
-        print(price.text)
+        price_correct = [e for e in price if not e.find_parents(attrs={"class": re.compile("cart")})]
+        if(price_correct != []):
+            print(price_correct[0].text)
     else:
         print('price none')
 
-    name = soup.find("h1", {"class": re.compile("name")})
+    name = soup.find(class_=re.compile("name"))
+    if name == None:
+        name = soup.find(id={re.compile("name")})
+    if name == None:
+        name = soup.find(itemprop={re.compile("name")})
     if name != None:
-        print(name.text)
+            print(name.text)
     else:
         print('name none')
+
+    pics = []
+    images = soup.find_all("img", alt=True)
+    if name != None:
+        for pic in images:
+            if(name != None and name != []):
+                if name.text in pic['alt']:
+                    pics.append(pic)
+        if pics != []:
+            print(pics)
+    else:
+        print('image none')
