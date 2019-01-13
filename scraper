@@ -5,7 +5,7 @@ import warnings
 import requests
 from urllib import robotparser
 
-website = "https://essencemakeup.com"
+website = "https://maybelline.com.ru"
 
 rp = robotparser.RobotFileParser()
 rp.set_url(website + "/robots.txt")
@@ -43,6 +43,25 @@ for url in url_xmls:
 headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
     }
+
+
+def linkify(str):
+    str = str.lower()
+    output_list = []
+    list_of_str = str.split()
+    for start in range(0, len(list_of_str) - 1):
+        output_underscore = ''
+        output_tire = ''
+        for word in range(start, len(list_of_str) - 2):
+            output_underscore = output_underscore + list_of_str[word] + "_"
+            output_list.append(output_underscore)
+            output_tire = output_tire + list_of_str[word] + "-"
+            output_list.append(output_tire)
+    if len(list_of_str) == 1:
+        output_list.append(list_of_str[0])
+    output_list.sort(key=len)
+    output_list.reverse()
+    return output_list
 
 all_items=[]
 for url in internal_urls:
@@ -88,7 +107,8 @@ for url in internal_urls:
         for link_name in linkified_names:
             found = soup.find_all(src=re.compile(link_name))
             if found != []:
-                pics.append(found)
+                if found not in pics:
+                    pics = pics + found
         print('image none')
 
     if pics == []:
@@ -96,24 +116,12 @@ for url in internal_urls:
         for link_name in linkified_names:
             found = soup.find_all(srcset=re.compile(link_name))
             if found != []:
-                pics.append(found)
+                if found not in pics:
+                    pics = pics + found
 
     if pics == []:
         print('image none')
     else:
         print(pics)
 
-    def linkify(str):
-        output_list = []
-        list_of_str = str.split()
-        for start in range(0, len(list_of_str)-1):
-            output_underscore = ''
-            output_tire = ''
-            for word in range(start, len(list_of_str) - 2):
-                output_underscore = output_underscore + list_of_str[word] + "_"
-                output_list.append(output_underscore)
-                output_tire = output_tire + list_of_str[word] + "-"
-                output_list.append(output_tire)
-        output_list.sort(key = len)
-        output_list.reverse()
-        return output_list
+
