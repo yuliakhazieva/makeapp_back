@@ -3,14 +3,40 @@ from bs4 import BeautifulSoup
 import sys
 import warnings
 import requests
+from urllib import robotparser
 
-r = requests.get("http://www.jeffreestarcosmetics.com/sitemap_products_1.xml?from=389773867&to=2363974451283")
+website = "https://essencemakeup.com"
+
+rp = robotparser.RobotFileParser()
+rp.set_url(website + "/robots.txt")
+rp.read()
+
+sitemap = ''
+robots = requests.get(website + "/robots.txt").text
+for line in robots.split("\n"):
+    if line.startswith('Sitemap'):
+        sitemap = line.split(': ')[1].split(' ')[0]
+
+if sitemap != '':
+    r = requests.get(sitemap)
+else:
+    r = requests.get(website + "/sitemap.xml")
+
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 xml = r.text
+sitemap = BeautifulSoup(xml)
+
+sitemapindex = sitemap.find('sitemapindex')
+
+if sitemapindex != None:
+    sitemap = sitemap.find('loc', text=re.compile('product')).text
+    r  = requests.get(sitemap)
+    data = r.text
+    sitemap = BeautifulSoup(data)
+
 internal_urls = []
-soup = BeautifulSoup(xml)
-url_xmls = soup.find_all("url")
+url_xmls = sitemap.find_all("url")
 for url in url_xmls:
     internal_urls.append(url.findNext("loc").text)
 
@@ -31,19 +57,21 @@ for url in internal_urls:
     if price == None:
         price = soup.find_all("div", {"class": re.compile("price")})
     if price != None:
-        price_correct = [e for e in price if not e.find_parents(attrs={"class": re.compile("cart")})]
+        price_correct = [e for e in price if not e.find_parents(attrs={"class": re.compile("header")})]
         if(price_correct != []):
             print(price_correct[0].text)
     else:
         print('price none')
 
-    name = soup.find(class_=re.compile("name"))
-    if name == None:
-        name = soup.find(id={re.compile("name")})
-    if name == None:
-        name = soup.find(itemprop={re.compile("name")})
-    if name != None:
-            print(name.text)
+    name = soup.find_all(itemprop={re.compile("name")})
+    if name == []:
+        name = soup.find_all(id={re.compile("name")})
+    if name == []:
+        name = soup.find_all(class_=re.compile("name"))
+    if name != []:
+        name_correct = [e for e in name if not e.find_parents(attrs={"class": re.compile("header")}) and not e.name == 'meta']
+        if(name_correct != []):
+            print(name_correct[0].text)
     else:
         print('name none')
 
@@ -52,9 +80,40 @@ for url in internal_urls:
     if name != None:
         for pic in images:
             if(name != None and name != []):
-                if name.text in pic['alt']:
+                if name[0].text in pic['alt']:
                     pics.append(pic)
-        if pics != []:
-            print(pics)
-    else:
+
+    if pics == []:
+        linkified_names = linkify(name_correct[0].text)
+        for link_name in linkified_names:
+            found = soup.find_all(src=re.compile(link_name))
+            if found != []:
+                pics.append(found)
         print('image none')
+
+    if pics == []:
+        linkified_names = linkify(name_correct[0].text)
+        for link_name in linkified_names:
+            found = soup.find_all(srcset=re.compile(link_name))
+            if found != []:
+                pics.append(found)
+
+    if pics == []:
+        print('image none')
+    else:
+        print(pics)
+
+    def linkify(str):
+        output_list = []
+        list_of_str = str.split()
+        for start in range(0, len(list_of_str)-1):
+            output_underscore = ''
+            output_tire = ''
+            for word in range(start, len(list_of_str) - 2):
+                output_underscore = output_underscore + list_of_str[word] + "_"
+                output_list.append(output_underscore)
+                output_tire = output_tire + list_of_str[word] + "-"
+                output_list.append(output_tire)
+        output_list.sort(key = len)
+        output_list.reverse()
+        return output_list
