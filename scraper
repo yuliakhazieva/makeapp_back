@@ -4,21 +4,35 @@ import sys
 import warnings
 import requests
 from urllib import robotparser
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
+
+cred = credentials.Certificate('key.json')
+firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://makeapp-372a2.firebaseio.com/'
+})
+
+ref = db.reference()
 
 prefix = "https://"
-website = "givenchybeauty.com"
+website = "kyliecosmetics"
+postfix = '.com'
+
+if(ref.child('companies').order_by_child('name').equal_to(website).get() == None):
+    ref.child('companies').push({'name' : website})
 
 rp = robotparser.RobotFileParser()
-rp.set_url(prefix + website + "/robots.txt")
+rp.set_url(prefix + website + postfix + "/robots.txt")
 try:
     rp.read()
 except:
     prefix = "http://"
-    rp.set_url(prefix + website + "/robots.txt")
+    rp.set_url(prefix + website + postfix + "/robots.txt")
     rp.read()
 
 sitemap_url = ''
-robots = requests.get(prefix + website + "/robots.txt").text
+robots = requests.get(prefix + website  + postfix + "/robots.txt").text
 for line in robots.split("\n"):
     if line.startswith('Sitemap'):
         sitemap_url = line.split(': ')[1].split(' ')[0]
@@ -26,7 +40,7 @@ for line in robots.split("\n"):
 if sitemap_url != '':
     r = requests.get(sitemap_url)
 else:
-    r = requests.get(prefix + website + "/sitemap.xml")
+    r = requests.get(prefix + website  + postfix + "/sitemap.xml")
 
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
@@ -87,7 +101,7 @@ all_items=[]
 
 if(internal_urls == []):
     visited_urls = []
-    for_visiting_urls = [prefix + website]
+    for_visiting_urls = [prefix + website  + postfix]
     while for_visiting_urls != []:
         page = requests.get(for_visiting_urls[0])
         visited_urls.append(for_visiting_urls[0])
@@ -100,7 +114,7 @@ if(internal_urls == []):
                     if rp.can_fetch("*", url['href']) and url['href'] != '':
                         if url['href'][0] != '#':
                             if url['href'][0] == '/':
-                                url['href'] = prefix + website + url['href']
+                                url['href'] = prefix + website  + postfix + url['href']
                             for_visiting_urls.append(url['href'])
     internal_urls = visited_urls
 
@@ -119,8 +133,9 @@ for url in internal_urls:
         price_correct = [e for e in price if not e.find_parents(attrs={"class": re.compile("header")})]
         if(price_correct != []):
             print(price_correct[0].text)
+            price_flg = True
     else:
-        print('price none')
+        price_flg = False
 
     name = soup.find_all(itemprop={re.compile("name")})
     if name == []:
@@ -133,8 +148,9 @@ for url in internal_urls:
         name_correct = [e for e in name if not e.find_parents(attrs={"class": re.compile("header")}) and not e.name == 'meta']
         if(name_correct != []):
             print(name_correct[0].string)
+            name_flg = True
     else:
-        print('name none')
+        name_flg = False
 
     pics = []
     images = soup.find_all("img", alt=True)
@@ -142,7 +158,7 @@ for url in internal_urls:
         for pic in images:
             if(name != None and name != []):
                 if name[0].text in pic['alt']:
-                    pics.append(pic)
+                    pics.append(pic['src'])
 
     if pics == [] and name_correct != []:
         linkified_names = linkify(name_correct[0].text)
@@ -151,6 +167,8 @@ for url in internal_urls:
             if found != []:
                 if found not in pics:
                     pics = pics + found
+        for pic in pics:
+            pic = pic['src']
         print('image none')
 
     if pics == [] and name_correct != []:
@@ -160,10 +178,14 @@ for url in internal_urls:
             if found != []:
                 if found not in pics:
                     pics = pics + found
+        for pic in pics:
+            pic = pic['src']
 
     if pics == []:
-        print('image none')
+        pic_flg = False
     else:
-        print(pics)
+        pic_flg = True
 
-
+    if pic_flg and name_flg:
+        if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name_correct[0].text).get()) == 0):
+            ref.child('companies').child(website).push({'name': name_correct[0].string, 'price':price_correct[0].string, 'pics': pics})
