@@ -156,9 +156,10 @@ for url in internal_urls:
     images = soup.find_all("img", alt=True)
     if name != None:
         for pic in images:
-            if(name != None and name != []):
-                if name[0].text in pic['alt']:
-                    pics.append(pic['src'])
+            if(name_correct != []):
+                if name_correct[0].string != None:
+                    if name_correct[0].string in pic['alt']:
+                        pics.append(pic['src'])
 
     if pics == [] and name_correct != []:
         linkified_names = linkify(name_correct[0].text)
