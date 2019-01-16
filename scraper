@@ -5,45 +5,65 @@ import warnings
 import requests
 from urllib import robotparser
 
-website = "https://maybelline.com.ru"
+prefix = "https://"
+website = "givenchybeauty.com"
 
 rp = robotparser.RobotFileParser()
-rp.set_url(website + "/robots.txt")
-rp.read()
+rp.set_url(prefix + website + "/robots.txt")
+try:
+    rp.read()
+except:
+    prefix = "http://"
+    rp.set_url(prefix + website + "/robots.txt")
+    rp.read()
 
-sitemap = ''
-robots = requests.get(website + "/robots.txt").text
+sitemap_url = ''
+robots = requests.get(prefix + website + "/robots.txt").text
 for line in robots.split("\n"):
     if line.startswith('Sitemap'):
-        sitemap = line.split(': ')[1].split(' ')[0]
+        sitemap_url = line.split(': ')[1].split(' ')[0]
 
-if sitemap != '':
-    r = requests.get(sitemap)
+if sitemap_url != '':
+    r = requests.get(sitemap_url)
 else:
-    r = requests.get(website + "/sitemap.xml")
+    r = requests.get(prefix + website + "/sitemap.xml")
 
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 xml = r.text
-sitemap = BeautifulSoup(xml)
+sitemap_soup = BeautifulSoup(xml)
 
-sitemapindex = sitemap.find('sitemapindex')
+sitemapindex = sitemap_soup.find('sitemapindex')
 
 if sitemapindex != None:
-    sitemap = sitemap.find('loc', text=re.compile('product')).text
-    r  = requests.get(sitemap)
+    sitemap_search = sitemap_soup.find('loc', text=re.compile('product'))
+    if sitemap_search == None:
+        sitemap_search = sitemap_soup.find('loc', text=re.compile('(en)(.*)(store|beauty|makeup)'))
+    sitemap_url = sitemap_search.text
+    r  = requests.get(sitemap_url)
     data = r.text
-    sitemap = BeautifulSoup(data)
+    sitemap_soup = BeautifulSoup(data)
 
 internal_urls = []
-url_xmls = sitemap.find_all("url")
-for url in url_xmls:
-    internal_urls.append(url.findNext("loc").text)
+url_xmls = sitemap_soup.find_all("url")
+if url_xmls != []:
+    for url in url_xmls:
+        internal_urls.append(url.findNext("loc").text)
+if url_xmls == []:
+    url_xmls = sitemap_soup.find_all("a")
+    for url in url_xmls:
+        internal_urls.append(url.text)
+if url_xmls == []:
+    r = requests.get(sitemap_url)
+    data = r.text
+    messy_urls = data.split()
+    for messy_url in messy_urls:
+        internal_urls.append(re.split('[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]Z')[0])
+
 
 headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
     }
-
 
 def linkify(str):
     str = str.lower()
@@ -64,12 +84,32 @@ def linkify(str):
     return output_list
 
 all_items=[]
+
+if(internal_urls == []):
+    visited_urls = []
+    for_visiting_urls = [prefix + website]
+    while for_visiting_urls != []:
+        page = requests.get(for_visiting_urls[0])
+        visited_urls.append(for_visiting_urls[0])
+        del for_visiting_urls[0]
+        soup = BeautifulSoup(page.content, 'html.parser')
+        potential_urls = soup.find_all('a')
+        for url in potential_urls:
+            if url.has_attr('href'):
+                if (url['href'] not in visited_urls and url['href'] not in for_visiting_urls):
+                    if rp.can_fetch("*", url['href']) and url['href'] != '':
+                        if url['href'][0] != '#':
+                            if url['href'][0] == '/':
+                                url['href'] = prefix + website + url['href']
+                            for_visiting_urls.append(url['href'])
+    internal_urls = visited_urls
+
 for url in internal_urls:
     item_array=[]
     page = requests.get(url)
     soup = BeautifulSoup(page.content, 'html.parser')
 
-    price = soup.find_all("span", {"class": re.compile("price")})
+    price = soup.find_all("span", {"class": re.compile("price|money")})
 
     if price == []:
         price = soup.find_all("p", {"class": re.compile("price")})
@@ -87,10 +127,12 @@ for url in internal_urls:
         name = soup.find_all(id={re.compile("name")})
     if name == []:
         name = soup.find_all(class_=re.compile("name"))
+    if name == []:
+        name = soup.find_all(class_=re.compile("title"))
     if name != []:
         name_correct = [e for e in name if not e.find_parents(attrs={"class": re.compile("header")}) and not e.name == 'meta']
         if(name_correct != []):
-            print(name_correct[0].text)
+            print(name_correct[0].string)
     else:
         print('name none')
 
@@ -102,7 +144,7 @@ for url in internal_urls:
                 if name[0].text in pic['alt']:
                     pics.append(pic)
 
-    if pics == []:
+    if pics == [] and name_correct != []:
         linkified_names = linkify(name_correct[0].text)
         for link_name in linkified_names:
             found = soup.find_all(src=re.compile(link_name))
@@ -111,7 +153,7 @@ for url in internal_urls:
                     pics = pics + found
         print('image none')
 
-    if pics == []:
+    if pics == [] and name_correct != []:
         linkified_names = linkify(name_correct[0].text)
         for link_name in linkified_names:
             found = soup.find_all(srcset=re.compile(link_name))
