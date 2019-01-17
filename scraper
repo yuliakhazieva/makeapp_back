@@ -8,6 +8,14 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 
+def jasonify(str):
+    list = str.split('&')
+    output = ''
+    for el in range(0, len(list) - 1):
+        output = output + list[el] + 'and'
+    output = output + list[len(list)-1]
+    return output
+
 #функция по превращению нзвания в стринги с тире и подчеркиваниями
 def linkify(str):
     str = str.lower()
@@ -43,8 +51,8 @@ ref = db.reference()
 
 #источник данных
 prefix = "https://"
-website = "maybelline"
-postfix = '.com.ru'
+website = "maxfactor"
+postfix = '.com'
 
 #добавляем компанию в бд
 if(ref.child('companies').order_by_child('name').equal_to(website).get() == None):
@@ -83,6 +91,8 @@ if sitemapindex != None:
     sitemap_search = sitemap_soup.find('loc', text=re.compile('product'))
     if sitemap_search == None:
         sitemap_search = sitemap_soup.find('loc', text=re.compile('(en)(.*)(store|beauty|makeup)'))
+    if sitemap_search == None:
+        sitemap_search = sitemap_soup.find("loc")
     sitemap_url = sitemap_search.text
     r  = requests.get(sitemap_url)
     data = r.text
@@ -112,7 +122,7 @@ headers = {
 all_items=[]
 
 #если карты сайта не оказалось
-if(internal_urls == []):
+if(internal_urls == [] or sitemap_url == ''):
     visited_urls = []
     for_visiting_urls = [prefix + website  + postfix]
     while for_visiting_urls != []:
@@ -152,6 +162,9 @@ for url in internal_urls:
     else:
         price_flg = False
 
+    page_title = soup.find("title")
+
+    name = None
     #парсим название
     name_elements = soup.find_all(itemprop={re.compile("name")})
     if name_elements == []:
@@ -165,13 +178,15 @@ for url in internal_urls:
         if(names != []):
             frequency_map = {}
             for name in names:
-                if(name.string != None):
+                if name.string != None and name.string in page_title.string:
                     frequency_map[len(soup.find_all(string=re.compile(name.string)))] = name.string
             keys = frequency_map.keys()
             if frequency_map == {}:
                 name = None
             for key in sorted(frequency_map, reverse=True):
                 name = frequency_map[key]
+                if '&' in name:
+                    name = jasonify(name)
                 print(name)
                 break
             name_flg = True
