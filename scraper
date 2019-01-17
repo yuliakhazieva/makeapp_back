@@ -7,6 +7,14 @@ from urllib import robotparser
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
+from PIL import Image
+import urllib
+from io import StringIO
+import struct
+import numpy as np
+import scipy
+import scipy.misc
+import scipy.cluster
 
 def jasonify(str):
     list = str.split('&')
@@ -24,17 +32,22 @@ def linkify(str):
     for start in range(0, len(list_of_str)):
         output_underscore = ''
         output_tire = ''
+        output_no_space = ''
         for word in range(start, len(list_of_str)):
             if(word != start):
                 output_underscore = output_underscore + "_" + list_of_str[word]
                 output_list.append(output_underscore)
                 output_tire = output_tire + "-" + list_of_str[word]
                 output_list.append(output_tire)
+                output_no_space = output_no_space + list_of_str[word]
+                output_list.append(output_no_space)
             else:
                 output_underscore = output_underscore + list_of_str[word]
                 output_list.append(output_underscore)
                 output_tire = output_tire + list_of_str[word]
                 output_list.append(output_tire)
+                output_no_space = output_no_space + list_of_str[word]
+                output_list.append(output_no_space)
     if len(list_of_str) == 1:
         output_list.append(list_of_str[0])
     output_list.sort(key=len)
@@ -58,6 +71,11 @@ postfix = '.com'
 if(ref.child('companies').order_by_child('name').equal_to(website).get() == None):
     ref.child('companies').push({'name' : website})
 
+headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
+    }
+
+
 #читаем роботс.тхт
 rp = robotparser.RobotFileParser()
 rp.set_url(prefix + website + postfix + "/robots.txt")
@@ -70,15 +88,15 @@ except:
 
 #пытаемся получить и прочесть карту сайта
 sitemap_url = ''
-robots = requests.get(prefix + website  + postfix + "/robots.txt").text
+robots = requests.get(prefix + website  + postfix + "/robots.txt", timeout = 5, headers = headers).text
 for line in robots.split("\n"):
     if line.startswith('Sitemap'):
         sitemap_url = line.split(': ')[1].split(' ')[0]
 
 if sitemap_url != '':
-    r = requests.get(sitemap_url)
+    r = requests.get(sitemap_url, timeout = 5, headers = headers)
 else:
-    r = requests.get(prefix + website  + postfix + "/sitemap.xml")
+    r = requests.get(prefix + website  + postfix + "/sitemap.xml", timeout = 5, headers = headers)
 
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
@@ -94,7 +112,7 @@ if sitemapindex != None:
     if sitemap_search == None:
         sitemap_search = sitemap_soup.find("loc")
     sitemap_url = sitemap_search.text
-    r  = requests.get(sitemap_url)
+    r  = requests.get(sitemap_url, timeout = 5, headers = headers)
     data = r.text
     sitemap_soup = BeautifulSoup(data)
 
@@ -108,16 +126,11 @@ if url_xmls == []:
     for url in url_xmls:
         internal_urls.append(url.text)
 if url_xmls == []:
-    r = requests.get(sitemap_url)
+    r = requests.get(sitemap_url, timeout = 5, headers = headers)
     data = r.text
     messy_urls = data.split()
     for messy_url in messy_urls:
         internal_urls.append(re.split('[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]Z')[0])
-
-
-headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
-    }
 
 all_items=[]
 
@@ -126,7 +139,7 @@ if(internal_urls == [] or sitemap_url == ''):
     visited_urls = []
     for_visiting_urls = [prefix + website  + postfix]
     while for_visiting_urls != []:
-        page = requests.get(for_visiting_urls[0])
+        page = requests.get(for_visiting_urls[0], timeout = 5, headers = headers)
         visited_urls.append(for_visiting_urls[0])
         del for_visiting_urls[0]
         soup = BeautifulSoup(page.content, 'html.parser')
@@ -143,7 +156,7 @@ if(internal_urls == [] or sitemap_url == ''):
 
 for url in internal_urls:
     item_array=[]
-    page = requests.get(url)
+    page = requests.get(url, timeout = 5, headers = headers)
     soup = BeautifulSoup(page.content, 'html.parser')
 
     #парсим цену
@@ -226,6 +239,16 @@ for url in internal_urls:
     else:
         pic_flg = True
         print(pics)
+
+
+    #оттенки
+    img_tag = soup.find_all('img')
+    for image in img_tag:
+        file = StringIO(urllib.urlopen(image['src']).read())
+        im = Image.open(file)
+        width, height = im.size
+        if width < 90 and height < 90:
+
 
     #добавляем продукт в бд
     if pic_flg and name_flg and price_flg:
