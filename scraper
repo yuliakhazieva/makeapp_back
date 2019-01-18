@@ -11,6 +11,37 @@ import requests
 import time
 import operator
 
+def shades_from_list_of_urls(list):
+    for src in list:
+        if src[0] == '/' and src[1] == '//':
+            src = src[2:]
+        if src[0] == '/':
+            src = prefix + website + postfix + src
+
+        extens = src[-4:]
+        if extens != '.png' and extens != '.jpg' and extens != 'jpeg':
+            continue
+        if extens == 'jpeg':
+            extens = '.jpeg'
+        img_data = requests.get(src).content
+        with open('aaa' + extens, 'wb') as handler:
+            handler.write(img_data)
+
+        im = Image.open('aaa' + extens)
+
+        width, height = im.size
+        if width < 101 and height < 101:
+            print(im)
+            im = im.convert('RGB')
+            colors = im.getcolors(maxcolors=10000)
+            colors.sort(key=operator.itemgetter(0), reverse=True)
+            colors = colors[:3]
+            for i in range(0, len(colors) - 1):
+                if colors[i][1][0] + colors[i][1][1] + colors[i][1][2] >= 750 or colors[i][1][0] + colors[i][1][1] + \
+                        colors[i][1][2] <= 15:
+                    del colors[i]
+            shades.append(colors[0])
+
 def jasonify(str):
     list = str.split('&')
     output = ''
@@ -237,39 +268,40 @@ for url in internal_urls:
 
 
     #оттенки
-    img_tag = soup.find_all('img')
-    for image in img_tag:
-        src = image['src']
-        if src[0] == '/':
-            src = prefix + website + postfix + src
+    if pic_flg and name_flg:
+        shades = []
+        img_tag = soup.find_all('img')
+        imgs = []
+        for el in img_tag:
+            imgs.append(el['src'])
+        shades_from_list_of_urls(imgs)
 
-        extens = src[-4:]
-        if extens != '.png' and extens != '.jpg' and extens != 'jpeg':
-            continue
-        if extens == 'jpeg':
-            extens = '.jpeg'
-        img_data = requests.get(src).content
-        with open('aaa' + extens, 'wb') as handler:
-            handler.write(img_data)
+        if shades == []:
+            results = soup.findAll(True, {"background-color": re.compile('#')})
+            additional = soup.findAll(True, {"style": re.compile('background-color:#')})
+            for el in additional:
+                hex = re.match('(?<=background-color:#).{6}', el['style'])
+                shades.append(hex)
+            for res in results:
+                shades.append(res['background-color'])
 
-        im = Image.open('aaa' + extens)
+        if shades == []:
+            els = soup.find_all('a', {'data-url':True})
+            for el in els:
+                shades.append(el['data-url'])
+        if shades != []:
+            shades_flg = True
+        else:
+            shades_flg = False
 
-        width, height = im.size
-        if width < 90 and height < 90:
-            print(im)
-            im = im.convert('RGB')
-            colors = im.getcolors(maxcolors=10000)
-            colors.sort(key=operator.itemgetter(0), reverse=True)
-            colors = colors[:3]
-            for i in range(0, len(colors)-1):
-                if colors[i][1][0] + colors[i][1][1] + colors[i][1][2] >= 750 or colors[i][1][0] + colors[i][1][1] + colors[i][1][2] <= 15:
-                    del colors[i]
-            print(colors)
 
     #добавляем продукт в бд
-    if pic_flg and name_flg and price_flg:
+    if pic_flg and name_flg and price_flg and shades_flg:
         if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
-            ref.child('companies').child(website).push({'name': name, 'price':price, 'pics': pics})
+            ref.child('companies').child(website).push({'name': name, 'price':price, 'pics': pics, 'shades': shades})
+    elif pic_flg and name_flg and shades_flg:
+        if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
+            ref.child('companies').child(website).push({'name': name, 'pics': pics, 'shades': shades})
     elif pic_flg and name_flg:
         if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
             ref.child('companies').child(website).push({'name': name, 'pics': pics})
