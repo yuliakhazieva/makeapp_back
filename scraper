@@ -8,8 +8,8 @@ from firebase_admin import credentials
 from firebase_admin import db
 from PIL import Image
 import requests
-import time
 import operator
+from googlesearch import search
 
 def shades_from_list_of_urls(list):
     for src in list:
@@ -88,220 +88,240 @@ firebase_admin.initialize_app(cred, {
 
 ref = db.reference()
 
-#источник данных
-prefix = "https://"
-website = "urbandecay"
-postfix = '.ru'
+file = open('brands.txt', 'r')
+companies = file.readlines()
 
-#добавляем компанию в бд
-if(ref.child('companies').order_by_child('name').equal_to(website).get() == None):
-    ref.child('companies').push({'name' : website})
+for company in companies:
 
-headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:13.0) Gecko/20100101 Firefox/13.0.1'
-    }
-
-
-#читаем роботс.тхт
-rp = robotparser.RobotFileParser()
-rp.set_url(prefix + website + postfix + "/robots.txt")
-try:
-    rp.read()
-except:
-    prefix = "http://"
-    rp.set_url(prefix + website + postfix + "/robots.txt")
-    rp.read()
-
-#пытаемся получить и прочесть карту сайта
-sitemap_url = ''
-robots = requests.get(prefix + website  + postfix + "/robots.txt", timeout = 10, headers = headers).text
-for line in robots.split("\n"):
-    if line.startswith('Sitemap'):
-        sitemap_url = line.split(': ')[1].split(' ')[0]
-
-if sitemap_url != '':
-    r = requests.get(sitemap_url, timeout = 10, headers = headers)
-else:
-    r = requests.get(prefix + website  + postfix + "/sitemap.xml", timeout = 10, headers = headers)
-
-if not sys.warnoptions:
-    warnings.simplefilter("ignore")
-xml = r.text
-sitemap_soup = BeautifulSoup(xml)
-
-sitemapindex = sitemap_soup.find('sitemapindex')
-
-if sitemapindex != None:
-    sitemap_search = sitemap_soup.find('loc', text=re.compile('product'))
-    if sitemap_search == None:
-        sitemap_search = sitemap_soup.find('loc', text=re.compile('(en)(.*)(store|beauty|makeup)'))
-    if sitemap_search == None:
-        sitemap_search = sitemap_soup.find("loc")
-    sitemap_url = sitemap_search.text
-    r  = requests.get(sitemap_url, timeout = 10, headers = headers)
-    data = r.text
-    sitemap_soup = BeautifulSoup(data)
-
-internal_urls = []
-url_xmls = sitemap_soup.find_all("url")
-if url_xmls != []:
-    for url in url_xmls:
-        internal_urls.append(url.findNext("loc").text)
-if url_xmls == []:
-    url_xmls = sitemap_soup.find_all("a")
-    for url in url_xmls:
-        internal_urls.append(url.text)
-if url_xmls == []:
-    r = requests.get(sitemap_url, timeout = 10, headers = headers)
-    data = r.text
-    messy_urls = data.split()
-    for messy_url in messy_urls:
-        internal_urls.append(re.split('[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-10][0-9]Z')[0])
-
-all_items=[]
-
-#если карты сайта не оказалось
-if(internal_urls == [] or sitemap_url == ''):
-    visited_urls = []
-    for_visiting_urls = [prefix + website  + postfix]
-    while for_visiting_urls != []:
-        page = requests.get(for_visiting_urls[0], timeout = 10, headers = headers)
-        visited_urls.append(for_visiting_urls[0])
-        del for_visiting_urls[0]
-        soup = BeautifulSoup(page.content, 'html.parser')
-        potential_urls = soup.find_all('a')
-        for url in potential_urls:
-            if url.has_attr('href'):
-                if (url['href'] not in visited_urls and url['href'] not in for_visiting_urls):
-                    if rp.can_fetch("*", url['href']) and url['href'] != '':
-                        if url['href'][0] != '#':
-                            if url['href'][0] == '/':
-                                url['href'] = prefix + website  + postfix + url['href']
-                            for_visiting_urls.append(url['href'])
-    internal_urls = visited_urls
-
-for url in internal_urls:
-    item_array=[]
-    page = requests.get(url, timeout = 10, headers = headers)
-    soup = BeautifulSoup(page.content, 'html.parser')
-
-    #парсим цену
-    price_elements = soup.find_all("span", {"class": re.compile("price|money")})
-
-    if price_elements == []:
-        price_elements = soup.find_all("p", {"class": re.compile("price")})
-    if price_elements == []:
-        price_elements = soup.find_all("div", {"class": re.compile("price")})
-    if price_elements != []:
-        prices = [e for e in price_elements if not e.find_parents(attrs={"class": re.compile("header")})]
-        if(prices != []):
-            price = prices[0].text
-            print(price)
-            price_flg = True
-    else:
-        price_flg = False
-
-    page_title = soup.find("title")
-
-    name = None
-    #парсим название
-    name_elements = soup.find_all(itemprop={re.compile("name")})
-    if name_elements == []:
-        name_elements = soup.find_all(id={re.compile("name")})
-    if name_elements == []:
-        name_elements = soup.find_all(class_=re.compile("name"))
-    if name_elements == []:
-        name_elements = soup.find_all(class_=re.compile("title"))
-    if name_elements != []:
-        names = [e for e in name_elements if not e.find_parents(attrs={"class": re.compile("header")}) and not e.name == 'meta']
-        if(names != []):
-            frequency_map = {}
-            for name in names:
-                if name.string != None and name.string in page_title.string:
-                    frequency_map[len(soup.find_all(string=re.compile(name.string)))] = name.string
-            keys = frequency_map.keys()
-            if frequency_map == {}:
-                name = None
-            for key in sorted(frequency_map, reverse=True):
-                name = frequency_map[key]
-                if '&' in name:
-                    name = jasonify(name)
-                print(name)
+    website_full_name = ''
+    company_name = company.split()[0]
+    potential_websites = search(company_name + 'makeup', tld="com", lang='en', num=3, stop=1, pause=2)
+    for site in potential_websites:
+        data = requests.get(site)
+        site_soup = BeautifulSoup(data.text, features='lxml')
+        if site_soup.find(string="brands") == None and site_soup.find(string="Brands") == None:
+            if site_soup.find(string="Lips") != None or site_soup.find(string="Eyes") != None or site_soup.find(string="Lipstick") != None:
+                website_full_name = site
                 break
-            name_flg = True
+    if website_full_name == '':
+        continue
+
+    if website_full_name[:8] == 'https://':
+        prefix = 'https://'
+        rest = website_full_name[8:]
+        website = rest.split('.')[0]
+        postfix = rest.split('.')[1]
     else:
-        name_flg = False
+        prefix = 'http://'
 
-    #парсим картинки
-    pics = []
-    images = soup.find_all("img", alt=True)
-    if name != None:
-        for pic in images:
-            if(names != []):
-                if name != None:
-                    if name in pic['alt']:
-                        pics.append(pic['src'])
+    #добавляем компанию в бд
+    if(ref.child('companies').order_by_child('name').equal_to(website).get() == None):
+        ref.child('companies').push({'name' : website})
 
-    if pics == [] and name != None:
-        linkified_names = linkify(name)
-        for link_name in linkified_names:
-            found = soup.find_all(src=re.compile(link_name))
-            if found != []:
-                for pic in found:
-                    if pic['src'] not in pics:
-                        pics.append(pic['src'])
+    headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:13.0) Gecko/20100101 Firefox/13.0.1'
+        }
 
-    if pics == [] and name != None:
-        linkified_names = linkify(name)
-        for link_name in linkified_names:
-            found = soup.find_all(srcset=re.compile(link_name))
-            if found != []:
-                for pic in found:
-                    if pic['src'] not in pics:
-                        pics.append(pic['src'])
+    #читаем роботс.тхт
+    rp = robotparser.RobotFileParser()
+    rp.set_url(prefix + website + postfix + "/robots.txt")
+    try:
+        rp.read()
+    except:
+        prefix = "http://"
+        rp.set_url(prefix + website + postfix + "/robots.txt")
+        rp.read()
 
-    if pics == []:
-        pic_flg = False
+    #пытаемся получить и прочесть карту сайта
+    sitemap_url = ''
+    robots = requests.get(prefix + website  + postfix + "/robots.txt", timeout = 10, headers = headers).text
+    for line in robots.split("\n"):
+        if line.startswith('Sitemap'):
+            sitemap_url = line.split(': ')[1].split(' ')[0]
+
+    if sitemap_url != '':
+        r = requests.get(sitemap_url, timeout = 10, headers = headers)
     else:
-        pic_flg = True
-        print(pics)
+        r = requests.get(prefix + website  + postfix + "/sitemap.xml", timeout = 10, headers = headers)
 
+    if not sys.warnoptions:
+        warnings.simplefilter("ignore")
+    xml = r.text
+    sitemap_soup = BeautifulSoup(xml)
 
-    #оттенки
-    if pic_flg and name_flg:
-        shades = []
-        img_tag = soup.find_all('img')
-        imgs = []
-        for el in img_tag:
-            imgs.append(el['src'])
-        shades_from_list_of_urls(imgs)
+    sitemapindex = sitemap_soup.find('sitemapindex')
 
-        if shades == []:
-            results = soup.findAll(True, {"background-color": re.compile('#')})
-            additional = soup.findAll(True, {"style": re.compile('background-color:#')})
-            for el in additional:
-                hex = re.match('(?<=background-color:#).{6}', el['style'])
-                shades.append(hex)
-            for res in results:
-                shades.append(res['background-color'])
+    if sitemapindex != None:
+        sitemap_search = sitemap_soup.find('loc', text=re.compile('product'))
+        if sitemap_search == None:
+            sitemap_search = sitemap_soup.find('loc', text=re.compile('(en)(.*)(store|beauty|makeup)'))
+        if sitemap_search == None:
+            sitemap_search = sitemap_soup.find("loc")
+        sitemap_url = sitemap_search.text
+        r  = requests.get(sitemap_url, timeout = 10, headers = headers)
+        data = r.text
+        sitemap_soup = BeautifulSoup(data)
 
-        if shades == []:
-            els = soup.find_all('a', {'data-url':True})
-            for el in els:
-                shades.append(el['data-url'])
-        if shades != []:
-            shades_flg = True
+    internal_urls = []
+    url_xmls = sitemap_soup.find_all("url")
+    if url_xmls != []:
+        for url in url_xmls:
+            internal_urls.append(url.findNext("loc").text)
+    if url_xmls == []:
+        url_xmls = sitemap_soup.find_all("a")
+        for url in url_xmls:
+            internal_urls.append(url.text)
+    if url_xmls == []:
+        r = requests.get(sitemap_url, timeout = 10, headers = headers)
+        data = r.text
+        messy_urls = data.split()
+        for messy_url in messy_urls:
+            internal_urls.append(re.split('[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-10][0-9]Z')[0])
+
+    all_items=[]
+
+    #если карты сайта не оказалось
+    if(internal_urls == [] or sitemap_url == ''):
+        visited_urls = []
+        for_visiting_urls = [prefix + website  + postfix]
+        while for_visiting_urls != []:
+            page = requests.get(for_visiting_urls[0], timeout = 10, headers = headers)
+            visited_urls.append(for_visiting_urls[0])
+            del for_visiting_urls[0]
+            soup = BeautifulSoup(page.content, 'html.parser')
+            potential_urls = soup.find_all('a')
+            for url in potential_urls:
+                if url.has_attr('href'):
+                    if (url['href'] not in visited_urls and url['href'] not in for_visiting_urls):
+                        if rp.can_fetch("*", url['href']) and url['href'] != '':
+                            if url['href'][0] != '#':
+                                if url['href'][0] == '/':
+                                    url['href'] = prefix + website  + postfix + url['href']
+                                for_visiting_urls.append(url['href'])
+        internal_urls = visited_urls
+
+    for url in internal_urls:
+        item_array=[]
+        page = requests.get(url, timeout = 10, headers = headers)
+        soup = BeautifulSoup(page.content, 'html.parser')
+
+        #парсим цену
+        price_elements = soup.find_all("span", {"class": re.compile("price|money")})
+
+        if price_elements == []:
+            price_elements = soup.find_all("p", {"class": re.compile("price")})
+        if price_elements == []:
+            price_elements = soup.find_all("div", {"class": re.compile("price")})
+        if price_elements != []:
+            prices = [e for e in price_elements if not e.find_parents(attrs={"class": re.compile("header")})]
+            if(prices != []):
+                price = prices[0].text
+                print(price)
+                price_flg = True
         else:
-            shades_flg = False
+            price_flg = False
+
+        page_title = soup.find("title")
+
+        name = None
+        #парсим название
+        name_elements = soup.find_all(itemprop={re.compile("name")})
+        if name_elements == []:
+            name_elements = soup.find_all(id={re.compile("name")})
+        if name_elements == []:
+            name_elements = soup.find_all(class_=re.compile("name"))
+        if name_elements == []:
+            name_elements = soup.find_all(class_=re.compile("title"))
+        if name_elements != []:
+            names = [e for e in name_elements if not e.find_parents(attrs={"class": re.compile("header")}) and not e.name == 'meta']
+            if(names != []):
+                frequency_map = {}
+                for name in names:
+                    if name.string != None and name.string in page_title.string:
+                        frequency_map[len(soup.find_all(string=re.compile(name.string)))] = name.string
+                keys = frequency_map.keys()
+                if frequency_map == {}:
+                    name = None
+                for key in sorted(frequency_map, reverse=True):
+                    name = frequency_map[key]
+                    if '&' in name:
+                        name = jasonify(name)
+                    print(name)
+                    break
+                name_flg = True
+        else:
+            name_flg = False
+
+        #парсим картинки
+        pics = []
+        images = soup.find_all("img", alt=True)
+        if name != None:
+            for pic in images:
+                if(names != []):
+                    if name != None:
+                        if name in pic['alt']:
+                            pics.append(pic['src'])
+
+        if pics == [] and name != None:
+            linkified_names = linkify(name)
+            for link_name in linkified_names:
+                found = soup.find_all(src=re.compile(link_name))
+                if found != []:
+                    for pic in found:
+                        if pic['src'] not in pics:
+                            pics.append(pic['src'])
+
+        if pics == [] and name != None:
+            linkified_names = linkify(name)
+            for link_name in linkified_names:
+                found = soup.find_all(srcset=re.compile(link_name))
+                if found != []:
+                    for pic in found:
+                        if pic['src'] not in pics:
+                            pics.append(pic['src'])
+
+        if pics == []:
+            pic_flg = False
+        else:
+            pic_flg = True
+            print(pics)
 
 
-    #добавляем продукт в бд
-    if pic_flg and name_flg and price_flg and shades_flg:
-        if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
-            ref.child('companies').child(website).push({'name': name, 'price':price, 'pics': pics, 'shades': shades})
-    elif pic_flg and name_flg and shades_flg:
-        if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
-            ref.child('companies').child(website).push({'name': name, 'pics': pics, 'shades': shades})
-    elif pic_flg and name_flg:
-        if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
-            ref.child('companies').child(website).push({'name': name, 'pics': pics})
+        #оттенки
+        if pic_flg and name_flg:
+            shades = []
+            img_tag = soup.find_all('img')
+            imgs = []
+            for el in img_tag:
+                imgs.append(el['src'])
+            shades_from_list_of_urls(imgs)
+
+            if shades == []:
+                results = soup.findAll(True, {"background-color": re.compile('#')})
+                additional = soup.findAll(True, {"style": re.compile('background-color:#')})
+                for el in additional:
+                    hex = re.match('(?<=background-color:#).{6}', el['style'])
+                    shades.append(hex)
+                for res in results:
+                    shades.append(res['background-color'])
+
+            if shades == []:
+                els = soup.find_all('a', {'data-url':True})
+                for el in els:
+                    shades.append(el['data-url'])
+            if shades != []:
+                shades_flg = True
+            else:
+                shades_flg = False
+
+
+        #добавляем продукт в бд
+        if pic_flg and name_flg and price_flg and shades_flg:
+            if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
+                ref.child('companies').child(website).push({'name': name, 'price':price, 'pics': pics, 'shades': shades})
+        elif pic_flg and name_flg and shades_flg:
+            if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
+                ref.child('companies').child(website).push({'name': name, 'pics': pics, 'shades': shades})
+        elif pic_flg and name_flg:
+            if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
+                ref.child('companies').child(website).push({'name': name, 'pics': pics})
