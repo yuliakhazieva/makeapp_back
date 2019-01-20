@@ -12,7 +12,11 @@ import operator
 from googlesearch import search
 
 def shades_from_list_of_urls(list):
+    shades_list = []
+    size_dict = {}
     for src in list:
+        if src == '':
+            continue
         if src[0] == '/' and src[1] == '//':
             src = src[2:]
         if src[0] == '/':
@@ -27,20 +31,62 @@ def shades_from_list_of_urls(list):
         with open('aaa' + extens, 'wb') as handler:
             handler.write(img_data)
 
-        im = Image.open('aaa' + extens)
+        try:
+            im = Image.open('aaa' + extens)
 
-        width, height = im.size
-        if width < 101 and height < 101:
-            print(im)
-            im = im.convert('RGB')
-            colors = im.getcolors(maxcolors=10000)
-            colors.sort(key=operator.itemgetter(0), reverse=True)
-            colors = colors[:3]
-            for i in range(0, len(colors) - 1):
-                if colors[i][1][0] + colors[i][1][1] + colors[i][1][2] >= 750 or colors[i][1][0] + colors[i][1][1] + \
-                        colors[i][1][2] <= 15:
-                    del colors[i]
-            shades.append(colors[0])
+            width, height = im.size
+            if width < 101 and height < 101:
+
+                if size_dict[(width, height)] == None:
+                    size_dict[(width, height)] = 1
+                else:
+                    size_dict[(width, height)] = size_dict[(width, height)] + 1
+
+            s = [(k, size_dict[k]) for k in sorted(size_dict, key=size_dict.get, reverse=True)]
+            for k, v in s:
+                often_size = k
+                break
+
+        except:
+            continue
+
+        for src in list:
+            if src == '':
+                continue
+            if src[0] == '/' and src[1] == '//':
+                src = src[2:]
+            if src[0] == '/':
+                src = prefix + website + postfix + src
+
+            extens = src[-4:]
+            if extens != '.png' and extens != '.jpg' and extens != 'jpeg':
+                continue
+            if extens == 'jpeg':
+                extens = '.jpeg'
+            img_data = requests.get(src).content
+            with open('aaa' + extens, 'wb') as handler:
+                handler.write(img_data)
+
+            try:
+                im = Image.open('aaa' + extens)
+
+                width, height = im.size
+
+                if (width, height) == often_size:
+                    print(im)
+                    im = im.convert('RGB')
+                    colors = im.getcolors(maxcolors=10000)
+                    colors.sort(key=operator.itemgetter(0), reverse=True)
+                    colors = colors[:3]
+                    for i in range(0, len(colors) - 1):
+                        if colors[i][1][0] + colors[i][1][1] + colors[i][1][2] >= 750 or colors[i][1][0] + colors[i][1][1] + \
+                                colors[i][1][2] <= 15:
+                            del colors[i]
+                    if colors[0] != None:
+                        shades_list.append(colors[0])
+            except:
+                continue
+    return shades_list
 
 def jasonify(str):
     list = str.split('&')
@@ -48,6 +94,11 @@ def jasonify(str):
     for el in range(0, len(list) - 1):
         output = output + list[el] + 'and'
     output = output + list[len(list)-1]
+    list = output.split('#')
+    output = ''
+    for el in range(0, len(list) - 1):
+        output = output + list[el] + ' '
+    output = output + list[len(list) - 1]
     return output
 
 #функция по превращению нзвания в стринги с тире и подчеркиваниями
@@ -92,27 +143,38 @@ file = open('brands.txt', 'r')
 companies = file.readlines()
 
 for company in companies:
-
     website_full_name = ''
-    company_name = company.split()[0]
+    company_name = ''
+    company_name_with_extra = company.split()
+    for i in range(0, len(company_name_with_extra) - 1):
+        company_name = company_name + company_name_with_extra[i] + " "
+    print("рассмотрим компанию " + company_name)
     potential_websites = search(company_name + 'makeup', tld="com", lang='en', num=3, stop=1, pause=2)
     for site in potential_websites:
+        print(site)
         data = requests.get(site)
         site_soup = BeautifulSoup(data.text, features='lxml')
-        if site_soup.find(string="brands") == None and site_soup.find(string="Brands") == None:
+        if site_soup.find(string=re.compile("brands")) == None and site_soup.find(string=re.compile("Brands")) == None and site_soup.find(string=re.compile("Shop by Brand")) == None:
             if site_soup.find(string="Lips") != None or site_soup.find(string="Eyes") != None or site_soup.find(string="Lipstick") != None:
-                website_full_name = site
+                if(company_name[:-1].lower() in site_soup.find('title').text.lower()):
+                    website_full_name = site
+                print("сайт нашелся, это " + website_full_name)
                 break
     if website_full_name == '':
         continue
 
     if website_full_name[:8] == 'https://':
         prefix = 'https://'
-        rest = website_full_name[8:]
-        website = rest.split('.')[0]
-        postfix = rest.split('.')[1]
     else:
         prefix = 'http://'
+
+    rest = website_full_name[8:]
+    website = rest.split('.')[1]
+    postfix = '.' + rest.split('.')[2]
+
+    print("префикс " + prefix)
+    print("имя " + website)
+    print("постфикс " + postfix)
 
     #добавляем компанию в бд
     if(ref.child('companies').order_by_child('name').equal_to(website).get() == None):
@@ -182,6 +244,7 @@ for company in companies:
 
     #если карты сайта не оказалось
     if(internal_urls == [] or sitemap_url == ''):
+        print("карты сайта нет, сделаем сами")
         visited_urls = []
         for_visiting_urls = [prefix + website  + postfix]
         while for_visiting_urls != []:
@@ -220,6 +283,7 @@ for company in companies:
                 price_flg = True
         else:
             price_flg = False
+            print("с этой страницы цена не распарсилась")
 
         page_title = soup.find("title")
 
@@ -244,13 +308,14 @@ for company in companies:
                     name = None
                 for key in sorted(frequency_map, reverse=True):
                     name = frequency_map[key]
-                    if '&' in name:
+                    if '&' in name or '#' in name:
                         name = jasonify(name)
                     print(name)
                     break
                 name_flg = True
         else:
             name_flg = False
+            print("с этой страницы название не распарсилось")
 
         #парсим картинки
         pics = []
@@ -282,6 +347,7 @@ for company in companies:
 
         if pics == []:
             pic_flg = False
+            print("с этой страницы картинки не распарсились")
         else:
             pic_flg = True
             print(pics)
@@ -293,17 +359,20 @@ for company in companies:
             img_tag = soup.find_all('img')
             imgs = []
             for el in img_tag:
-                imgs.append(el['src'])
-            shades_from_list_of_urls(imgs)
+                if el.has_attr('src'):
+                    imgs.append(el['src'])
+            shades = shades_from_list_of_urls(imgs)
 
             if shades == []:
                 results = soup.findAll(True, {"background-color": re.compile('#')})
                 additional = soup.findAll(True, {"style": re.compile('background-color:#')})
                 for el in additional:
                     hex = re.match('(?<=background-color:#).{6}', el['style'])
-                    shades.append(hex)
+                    if hex != None:
+                        shades.append(hex)
                 for res in results:
-                    shades.append(res['background-color'])
+                    if res['background-color'] != None:
+                        shades.append(res['background-color'])
 
             if shades == []:
                 els = soup.find_all('a', {'data-url':True})
@@ -311,8 +380,10 @@ for company in companies:
                     shades.append(el['data-url'])
             if shades != []:
                 shades_flg = True
+                print(shades)
             else:
                 shades_flg = False
+                print("с этой страницы оттенки не распарсились")
 
 
         #добавляем продукт в бд
