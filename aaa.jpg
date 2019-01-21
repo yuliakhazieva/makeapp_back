@@ -180,7 +180,7 @@ Shopify.theme.style = {"id":null,"handle":null};</script>
     window.addEventListener('load', asyncLoad, false);
   }
 })();</script>
-<script id="__st">var __st={"a":6481955,"offset":-28800,"reqid":"b09733a6-e0c9-4fa6-b4ec-d41e84368088","pageurl":"www.100percentpure.com\/s3-us-west-2.amazonaws.com\/stamped.io\/uploads\/photos\/thumb\/39930_9926921870_35d03a3a_dbe8_4e89_85a7_26820c096e9e.jpg","u":"ff9a9bb77fd9"};</script>
+<script id="__st">var __st={"a":6481955,"offset":-28800,"reqid":"578c0284-f661-4073-a2c8-05fb554c10d6","pageurl":"www.100percentpure.com\/s3-us-west-2.amazonaws.com\/stamped.io\/uploads\/photos\/thumb\/39930_9926911694_cdbb91c4_a89d_4e4c_91ae_024ccc3d6db7.jpg","u":"afeff029a936"};</script>
 <script>window.ShopifyPaypalV4VisibilityTracking = true;</script>
 <script>window.Shopify = window.Shopify || {};
 window.Shopify.Checkout = window.Shopify.Checkout || {};
