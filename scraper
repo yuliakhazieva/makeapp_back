@@ -7,10 +7,33 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 from PIL import Image
-import requests
 import operator
 from googlesearch import search
 import json
+import requests
+import random
+from urllib.request import Request, urlopen
+from fake_useragent import UserAgent
+
+ua = UserAgent()
+
+def random_proxy():
+  return random.randint(0, len(proxies) - 1)
+
+proxies = []
+proxies_req = Request('https://www.sslproxies.org/')
+proxies_req.add_header('User-Agent', ua.random)
+proxies_doc = urlopen(proxies_req).read().decode('utf8')
+
+soup = BeautifulSoup(proxies_doc, 'html.parser')
+proxies_table = soup.find(id='proxylisttable')
+
+# Save proxies in the array
+for row in proxies_table.tbody.find_all('tr'):
+    proxies.append({
+      'ip':   row.find_all('td')[0].string,
+      'port': row.find_all('td')[1].string
+    })
 
 def shades_from_list_of_urls(list):
     shades_list = []
@@ -131,17 +154,31 @@ file = open('brands.txt', 'r')
 companies = file.readlines()
 
 for company in companies:
+    user_agent = ua.random
+
     website_full_name = ''
     company_name = ''
     company_name_with_extra = company.split()
     for i in range(0, len(company_name_with_extra) - 1):
         company_name = company_name + company_name_with_extra[i] + " "
     print("рассмотрим компанию " + company_name)
-    potential_websites = search(company_name, tld="com", lang='en', num=3, stop=1, pause=2)
+
+    for i in range(1, 11):
+        proxy_index = random_proxy()
+        proxy = proxies[proxy_index]
+        try:
+            pause = random.uniform(3, 5)
+            potential_websites = search(company_name, tld="com", lang='en', num=3, stop=1, user_agent=user_agent, pause=pause)
+        except:
+            print("Skipping. Connnection error")
+            continue
+
     for site in potential_websites:
         print(site)
         try:
-            data = requests.get(site)
+            user_agent = ua.random
+            headers = {'User-Agent': user_agent}
+            data = requests.get(site, headers=headers)
         except:
             continue
         site_soup = BeautifulSoup(data.text, features='lxml')
@@ -150,22 +187,27 @@ for company in companies:
                 if(company_name[:-1].lower() in site_soup.find('title').text.lower()):
                     website_full_name = site
                 websitified_name = company_name[:-1].lower()
-                websitified_name.replace(" ", "")
+                websitified_name = websitified_name.replace(" ", "")
                 if websitified_name in site:
                     website_full_name = site
                 print("сайт нашелся, это " + website_full_name)
+
                 break
     if website_full_name == '':
         continue
 
     if website_full_name[:8] == 'https://':
         prefix = 'https://'
+        prfx_len = 8
     else:
         prefix = 'http://'
+        prfx_len = 7
 
-    rest = website_full_name[8:]
-    website = rest.split('.')[1]
-    postfix = '.' + rest.split('.')[2].split('/')[0]
+    rest = website_full_name[prfx_len:]
+    if rest[:4] == 'www.':
+        rest = rest[4:]
+    website = rest.split('.')[0]
+    postfix = '.' + rest.split('.')[1].split('/')[0]
 
     print("префикс " + prefix)
     print("имя " + website)
@@ -174,10 +216,6 @@ for company in companies:
     #добавляем компанию в бд
     if(ref.child('companies').order_by_child('name').equal_to(website).get() == None):
         ref.child('companies').push({'name' : website})
-
-    headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:13.0) Gecko/20100101 Firefox/13.0.1'
-        }
 
     #читаем роботс.тхт
     rp = robotparser.RobotFileParser()
@@ -189,6 +227,7 @@ for company in companies:
         rp.set_url(prefix + website + postfix + "/robots.txt")
         rp.read()
 
+    headers = {'User-Agent':user_agent}
     #пытаемся получить и прочесть карту сайта
     sitemap_url = ''
     robots = requests.get(prefix + website  + postfix + "/robots.txt", timeout = 10, headers = headers).text
@@ -196,6 +235,8 @@ for company in companies:
         if line.startswith('Sitemap'):
             sitemap_url = line.split(': ')[1].split(' ')[0]
 
+    if sitemap_url[0] == '/':
+        sitemap_url = prefix + website + postfix + sitemap_url
     if sitemap_url != '':
         r = requests.get(sitemap_url, timeout = 10, headers = headers)
     else:
@@ -243,24 +284,32 @@ for company in companies:
         visited_urls = []
         for_visiting_urls = [prefix + website  + postfix]
         while for_visiting_urls != []:
-            page = requests.get(for_visiting_urls[0], timeout = 10, headers = headers)
-            visited_urls.append(for_visiting_urls[0])
-            del for_visiting_urls[0]
-            soup = BeautifulSoup(page.content, 'html.parser')
-            potential_urls = soup.find_all('a')
-            for url in potential_urls:
-                if url.has_attr('href'):
-                    if (url['href'] not in visited_urls and url['href'] not in for_visiting_urls):
-                        if rp.can_fetch("*", url['href']) and url['href'] != '':
-                            if url['href'][0] != '#':
-                                if url['href'][0] == '/':
-                                    url['href'] = prefix + website  + postfix + url['href']
-                                for_visiting_urls.append(url['href'])
+            try:
+                page = requests.get(for_visiting_urls[0], timeout = 10, headers = headers)
+                if for_visiting_urls[0] not in visited_urls:
+                    visited_urls.append(for_visiting_urls[0])
+                soup = BeautifulSoup(page.content, 'html.parser')
+                potential_urls = soup.find_all('a')
+                for url in potential_urls:
+                    if url.has_attr('href') and prefix+website+postfix in url['href']:
+                        if (url['href'] not in visited_urls and url['href'] not in for_visiting_urls):
+                            if rp.can_fetch("*", url['href']) and url['href'] != '':
+                                if url['href'][0] != '#':
+                                    if url['href'][0] == '/':
+                                        url['href'] = prefix + website  + postfix + url['href']
+                                    if prefix+website+postfix in url['href']:
+                                        for_visiting_urls.append(url['href'])
+                del for_visiting_urls[0]
+            except:
+                del for_visiting_urls[0]
         internal_urls = visited_urls
 
     for url in internal_urls:
         item_array=[]
-        page = requests.get(url, timeout = 10, headers = headers)
+        try:
+            page = requests.get(url, timeout = 10, headers = headers)
+        except:
+            continue
         soup = BeautifulSoup(page.content, 'html.parser')
 
         #парсим цену
@@ -273,9 +322,13 @@ for company in companies:
         if price_elements != []:
             prices = [e for e in price_elements if not e.find_parents(attrs={"class": re.compile("header")})]
             if(prices != []):
-                price = prices[0].text
-                print(price)
-                price_flg = True
+                if len(prices) < 5:
+                    price = prices[0].text
+                    print(price)
+                    price_flg = True
+                else:
+                    price_flg = False
+                    print('слишком много цен на странице')
         else:
             price_flg = False
             print("с этой страницы цена не распарсилась")
@@ -285,32 +338,38 @@ for company in companies:
         name = None
         #парсим название
         name_elements = soup.find_all(itemprop={re.compile("name")})
-        if name_elements == []:
-            name_elements = soup.find_all(id={re.compile("name")})
-        if name_elements == []:
-            name_elements = soup.find_all(class_=re.compile("name"))
-        if name_elements == []:
-            name_elements = soup.find_all(class_=re.compile("title"))
+        name_elements = name_elements + soup.find_all(id={re.compile("name")})
+        name_elements = name_elements + soup.find_all(class_=re.compile("name"))
+        name_elements = name_elements + soup.find_all(class_=re.compile("title"))
+        name_elements = name_elements + soup.find_all("h1")
+        name_elements = name_elements + soup.find_all("h2")
         if name_elements != []:
             names = [e for e in name_elements if not e.find_parents(attrs={"class": re.compile("header")}) and not e.name == 'meta']
             if(names != []):
-                frequency_map = {}
-                for name in names:
-                    if name.string != None and name.string in page_title.string:
-                        frequency_map[len(soup.find_all(string=re.compile(name.string)))] = name.string
-                keys = frequency_map.keys()
-                if frequency_map == {}:
+                if len(names) < 20:
+                    frequency_map = {}
+                    for name in names:
+                        if name.string != None and name.string in page_title.string:
+                            if name.string.replace(" ", "") != "":
+                                frequency_map[len(soup.find_all(string=re.compile(name.string)))] = name.string
+                    keys = frequency_map.keys()
+                    if frequency_map == {}:
+                        name = None
+                    for key in sorted(frequency_map, reverse=True):
+                        name = frequency_map[key]
+                        if '&' in name or '#' in name:
+                            name = json.dumps(name)
+                        print(name)
+                        break
+                else:
                     name = None
-                for key in sorted(frequency_map, reverse=True):
-                    name = frequency_map[key]
-                    if '&' in name or '#' in name:
-                        name = json.dumps(name)
-                    print(name)
-                    break
-                name_flg = True
-        else:
+                    print("слишком много названий, заголовок: " + page_title.string)
+
+        if name == None:
             name_flg = False
             print("с этой страницы название не распарсилось")
+        else:
+            name_flg = True
 
         #парсим картинки
         pics = []
@@ -343,15 +402,46 @@ for company in companies:
                             pics.append(pic['src'])
 
         if pics == []:
+            imgs = soup.find_all('img')
+            for img in imgs:
+                pics.append(img['src'])
+
+        if pics == []:
             pic_flg = False
             print("с этой страницы картинки не распарсились")
         else:
             pic_flg = True
+            if len(pics) > 5:
+                for src in pics:
+                    if src == '':
+                        continue
+                    if src[0] == '/' and src[1] == '//':
+                        src = src[2:]
+                    if src[0] == '/':
+                        src = prefix + website + postfix + src
+
+                    extens = src[-4:]
+                    if extens != '.png' and extens != '.jpg' and extens != 'jpeg':
+                        continue
+                    if extens == 'jpeg':
+                        extens = '.jpeg'
+                    img_data = requests.get(src).content
+                    with open('aaa' + extens, 'wb') as handler:
+                        handler.write(img_data)
+
+                    try:
+                        im = Image.open('aaa' + extens)
+
+                        width, height = im.size
+                        if width < 101 and height < 101:
+                            pics.remove(src)
+                    except:
+                        pics.remove(src)
             print(pics)
 
-
+        shades_flg=False
         #оттенки
-        if pic_flg and name_flg:
+        if pic_flg and name_flg and price_flg:
             shades = []
             img_tag = soup.find_all('img')
             imgs = []
