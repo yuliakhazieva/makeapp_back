@@ -74,42 +74,42 @@ def shades_from_list_of_urls(list):
         except:
             continue
 
-        for src in list:
-            if src == '':
-                continue
-            if src[0] == '/' and src[1] == '//':
-                src = src[2:]
-            if src[0] == '/':
-                src = prefix + website + postfix + src
+    for src in list:
+        if src == '':
+            continue
+        if src[0] == '/' and src[1] == '//':
+            src = src[2:]
+        if src[0] == '/':
+            src = prefix + website + postfix + src
 
-            extens = src[-4:]
-            if extens != '.png' and extens != '.jpg' and extens != 'jpeg':
-                continue
-            if extens == 'jpeg':
-                extens = '.jpeg'
-            img_data = requests.get(src).content
-            with open('aaa' + extens, 'wb') as handler:
-                handler.write(img_data)
+        extens = src[-4:]
+        if extens != '.png' and extens != '.jpg' and extens != 'jpeg':
+            continue
+        if extens == 'jpeg':
+            extens = '.jpeg'
+        img_data = requests.get(src).content
+        with open('aaa' + extens, 'wb') as handler:
+            handler.write(img_data)
 
-            try:
-                im = Image.open('aaa' + extens)
+        try:
+            im = Image.open('aaa' + extens)
 
-                width, height = im.size
+            width, height = im.size
 
-                if (width, height) == often_size:
-                    print(im)
-                    im = im.convert('RGB')
-                    colors = im.getcolors(maxcolors=10000)
-                    colors.sort(key=operator.itemgetter(0), reverse=True)
-                    colors = colors[:3]
-                    for i in range(0, len(colors) - 1):
-                        if colors[i][1][0] + colors[i][1][1] + colors[i][1][2] >= 750 or colors[i][1][0] + colors[i][1][1] + \
-                                colors[i][1][2] <= 15:
-                            del colors[i]
-                    if colors[0] != None:
-                        shades_list.append(colors[0])
-            except:
-                continue
+            if (width, height) == often_size:
+                print(im)
+                im = im.convert('RGB')
+                colors = im.getcolors(maxcolors=10000)
+                colors.sort(key=operator.itemgetter(0), reverse=True)
+                colors = colors[:3]
+                for i in range(0, len(colors) - 1):
+                    if colors[i][1][0] + colors[i][1][1] + colors[i][1][2] >= 750 or colors[i][1][0] + colors[i][1][1] + \
+                            colors[i][1][2] <= 15:
+                        del colors[i]
+                if colors[0] != None:
+                    shades_list.append(colors[0])
+        except:
+            continue
     return shades_list
 
 #функция по превращению нзвания в стринги с тире и подчеркиваниями
@@ -322,7 +322,7 @@ for company in companies:
         if price_elements != []:
             prices = [e for e in price_elements if not e.find_parents(attrs={"class": re.compile("header")})]
             if(prices != []):
-                if len(prices) < 5:
+                if len(prices) < 10:
                     price = prices[0].text
                     print(price)
                     price_flg = True
@@ -349,9 +349,12 @@ for company in companies:
                 if len(names) < 20:
                     frequency_map = {}
                     for name in names:
-                        if name.string != None and name.string in page_title.string:
+                        if name.string != None and name.string.strip(" ") in page_title.string.strip(" "):
                             if name.string.replace(" ", "") != "":
                                 frequency_map[len(soup.find_all(string=re.compile(name.string)))] = name.string
+                        if name.text != None and name.text.strip(" ") in page_title.string.strip(" "):
+                            if name.text.replace(" ", "") != "":
+                                frequency_map[len(soup.find_all(string=re.compile(name.text)))] = name.text
                     keys = frequency_map.keys()
                     if frequency_map == {}:
                         name = None
@@ -372,72 +375,80 @@ for company in companies:
             name_flg = True
 
         #парсим картинки
-        pics = []
-        images = soup.find_all("img", alt=True)
-        if name != None:
-            for pic in images:
-                if(names != []):
-                    if name != None:
-                        if name in pic['alt']:
-                            pics.append(pic['src'])
+        if name_flg and price_flg:
+            pics = []
+            images = soup.find_all("img", alt=True)
+            if name != None:
+                for pic in images:
+                    if(names != []):
+                        if name != None:
+                            if name in pic['alt']:
+                                pics.append(pic['src'])
 
-        if pics == [] and name != None:
-            linkified_names = linkify(name)
-            for link_name in linkified_names:
-                link_name = re.escape(link_name)
-                found = soup.find_all(src=re.compile(link_name))
-                if found != []:
-                    for pic in found:
-                        if pic['src'] not in pics:
-                            pics.append(pic['src'])
+            if pics == [] and name != None:
+                linkified_names = linkify(name)
+                for link_name in linkified_names:
+                    link_name = re.escape(link_name)
+                    found = soup.find_all(src=re.compile(link_name))
+                    if found != []:
+                        for pic in found:
+                            if pic['src'] not in pics:
+                                pics.append(pic['src'])
 
-        if pics == [] and name != None:
-            linkified_names = linkify(name)
-            for link_name in linkified_names:
-                link_name = re.escape(link_name)
-                found = soup.find_all(srcset=re.compile(link_name))
-                if found != []:
-                    for pic in found:
-                        if pic['src'] not in pics:
-                            pics.append(pic['src'])
+            if pics == [] and name != None:
+                linkified_names = linkify(name)
+                for link_name in linkified_names:
+                    link_name = re.escape(link_name)
+                    found = soup.find_all(srcset=re.compile(link_name))
+                    if found != []:
+                        for pic in found:
+                            if pic['src'] not in pics:
+                                pics.append(pic['src'])
 
-        if pics == []:
-            imgs = soup.find_all('img')
-            for img in imgs:
-                pics.append(img['src'])
+            if pics == []:
+                imgs = soup.find_all('img')
+                for img in imgs:
+                    pics.append(img['src'])
 
-        if pics == []:
-            pic_flg = False
-            print("с этой страницы картинки не распарсились")
-        else:
-            pic_flg = True
-            if len(pics) > 5:
-                for src in pics:
-                    if src == '':
-                        continue
-                    if src[0] == '/' and src[1] == '//':
-                        src = src[2:]
-                    if src[0] == '/':
-                        src = prefix + website + postfix + src
-
-                    extens = src[-4:]
-                    if extens != '.png' and extens != '.jpg' and extens != 'jpeg':
-                        continue
-                    if extens == 'jpeg':
-                        extens = '.jpeg'
-                    img_data = requests.get(src).content
-                    with open('aaa' + extens, 'wb') as handler:
-                        handler.write(img_data)
-
-                    try:
-                        im = Image.open('aaa' + extens)
-
-                        width, height = im.size
-                        if width < 101 and height < 101:
+            if pics == []:
+                pic_flg = False
+                print("с этой страницы картинки не распарсились")
+            else:
+                pic_flg = True
+                if len(pics) > 5:
+                    pics_with_size = []
+                    for src in pics:
+                        if src == '':
                             pics.remove(src)
-                    except:
-                        pics.remove(src)
-            print(pics)
+                            continue
+                        if src[0] == '/' and src[1] == '//':
+                            src = src[2:]
+                        if src[0] == '/':
+                            src = prefix + website + postfix + src
+
+                        extens = src[-4:]
+                        if extens != '.png' and extens != '.jpg' and extens != 'jpeg':
+                            pics.remove(src)
+                            continue
+                        if extens == 'jpeg':
+                            extens = '.jpeg'
+                        img_data = requests.get(src).content
+                        with open('aaa' + extens, 'wb') as handler:
+                            handler.write(img_data)
+
+                        try:
+                            im = Image.open('aaa' + extens)
+
+                            width, height = im.size
+                            pics_with_size.append((src, width, height))
+                        except:
+                            pics.remove(src)
+
+                    pics = [x[0] for x in pics_with_size if x[1]>600 and x[2]>600]
+                print(pics)
+        else:
+            pic_flg = False
+            print("нет смысла смотреть картинка")
 
         shades_flg=False
         #оттенки
