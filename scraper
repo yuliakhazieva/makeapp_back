@@ -13,52 +13,56 @@ import requests
 import random
 from fake_useragent import UserAgent
 import signal
-
-ua = UserAgent()
-
-name = None
+import unidecode
 
 def process_names(name_elements):
     name = None
+
     if name_elements == []:
         return
-    names = [e for e in name_elements if
-             not e.find_parents(attrs={"class": re.compile("header")}) and not e.name == 'meta']
+
+    names = [e for e in name_elements if not e.find_parents(attrs={"class": re.compile("header")}) and not e.name == 'meta']
+
     if (names != []):
-        if len(names) < 55:
-            frequency_map = {}
-            for name in names:
-                
-                if name.string != None and name.string.strip(" ").strip('\n') in page_title.string.strip(" "):
-                    if name.string.replace(" ", "").replace('\n', '') != "":
-                        frequency_map[len(soup.find_all(string=re.compile(name.string)))] = name.string
-                elif name.text != None and name.text.strip(" ").strip('\n') in page_title.string.strip(" "):
-                    if name.text.replace(" ", "").replace('\n', '') != "":
-                        frequency_map[len(soup.find_all(string=re.compile(name.text)))] = name.text
-                if name.string != None:
-                    linkified_names = linkify(name.string)
-                elif name.text != None:
-                    linkified_names = linkify(name.text)
-                for link_name in linkified_names:
-                    if link_name in url:
-                        if name.text != None:
-                            nms = soup.find_all(True, string=re.compile(re.escape(name.text)))
-                            frequency_map[len(nms)] = name.text
-                        elif name.string != None:
-                            frequency_map[len(soup.find_all(string=re.compile(re.escape(name.string))))] = name.string
-                        break
-            keys = frequency_map.keys()
-            if frequency_map == {}:
-                name = None
-            for key in sorted(frequency_map, reverse=True):
-                name = frequency_map[key]
-                if '&' in name or '#' in name:
-                    name = name.replace('&', "and")
-                    name = name.replace('#', "")
-                break
-        else:
+        frequency_map = {}
+
+        for name in names:
+
+            name_temp = None
+
+            if name.string != None:
+                name_temp = name.string
+            if name.text != None:
+                name_temp = name.text
+
+            if name_temp != None:
+                name_temp = name_temp.strip(" ")
+                name_temp = ''.join(name_temp.splitlines())
+
+                if page_title.string != None:
+                    if name_temp in page_title.string.strip(" ") and name_temp != '':
+                        frequency_map[len(soup.find_all(string=re.compile(name_temp)))] = name_temp
+
+                if name_temp != None and name_temp != '':
+                    linkified_names = linkify(name_temp)
+
+                    for link_name in linkified_names:
+                        if link_name in url:
+                            if name_temp != None:
+                                nms = soup.find_all(True, string=re.compile(re.escape(name_temp)))
+                                frequency_map[len(nms)] = name_temp
+                                break
+        if frequency_map == {}:
             name = None
-            print("слишком много названий, заголовок: " + page_title.string)
+        for key in sorted(frequency_map, reverse=True):
+            name = frequency_map[key]
+            if '&' in name or '#' in name:
+                name = name.replace('&', "and")
+                name = name.replace('#', "")
+            break
+    if name != None:
+        name = name.strip(" ")
+        name = ''.join(name.splitlines())
     return name
 
 def handler(signum, frame):
@@ -72,7 +76,9 @@ keywords = ['eyeshadow', 'lipstick', 'lipgloss', 'lip liner', 'highlighter',
                         'Lip liner', 'Highlighter', 'Bronzer', 'Foundation', 'Concealer',
                         'Mascara', 'Eyeliner', 'Blush','Primer', 'Powder', 'Contouring',
                         'Eye pencil', 'Pigment', 'Glitter', 'BB creme', 'CC creme', 'Brow',
-                        'LIPS', 'Lips', 'lips', 'EYES', 'Eyes', 'eyes']
+                        'LIPS', 'Lips', 'lips', 'EYES', 'Eyes', 'eyes', 'Тени', "тени",
+                        "Помада", "помада", "Помады", "помады", "Блеск", "блеск", "Блески",
+                        "блески", "Карандаш для губ", "карандаш для губ"]
 
 def keywords_in_soup(site_soup):
     for word in keywords:
@@ -96,12 +102,14 @@ def delete_small_pics(pics):
             continue
         if extens == 'jpeg':
             extens = '.jpeg'
+
         try:
             img_data = requests.get(src).content
         except:
             src_els = src.split('://')
             src = src_els[0]+ '://www.' + src_els[1]
             img_data = requests.get(src).content
+
         with open('aaa' + extens, 'wb') as handler:
             handler.write(img_data)
 
@@ -117,7 +125,7 @@ def delete_small_pics(pics):
     w = 600
     h = 600
     pics = [x[0] for x in pics_with_size if x[1] > w and x[2] > h]
-    while pics == [] and w > 400:
+    while pics == [] and w > 300:
         w = w - 100
         h = h - 100
         pics = [x[0] for x in pics_with_size if x[1] > w and x[2] > h and 'background' not in src]
@@ -127,6 +135,7 @@ def delete_small_pics(pics):
 def shades_from_list_of_urls(list):
     shades_list = []
     size_dict = {}
+    often_size = None
     for src in list:
         if src == '':
             continue
@@ -188,19 +197,19 @@ def shades_from_list_of_urls(list):
             im = Image.open('aaa' + extens)
 
             width, height = im.size
-
-            if (width, height) == often_size:
-                print(im)
-                im = im.convert('RGB')
-                colors = im.getcolors(maxcolors=10000)
-                colors.sort(key=operator.itemgetter(0), reverse=True)
-                colors = colors[:3]
-                for i in range(0, len(colors) - 1):
-                    if colors[i][1][0] + colors[i][1][1] + colors[i][1][2] >= 750 or colors[i][1][0] + colors[i][1][1] + \
-                            colors[i][1][2] <= 15:
-                        del colors[i]
-                if colors[0] != None:
-                    shades_list.append(colors[0])
+            if often_size != None:
+                if (width, height) == often_size:
+                    print(im)
+                    im = im.convert('RGB')
+                    colors = im.getcolors(maxcolors=10000)
+                    colors.sort(key=operator.itemgetter(0), reverse=True)
+                    colors = colors[:3]
+                    for i in range(0, len(colors) - 1):
+                        if colors[i][1][0] + colors[i][1][1] + colors[i][1][2] >= 750 \
+                                or colors[i][1][0] + colors[i][1][1] + colors[i][1][2] <= 15:
+                            del colors[i]
+                    if colors[0] != None:
+                        shades_list.append(colors[0])
         except:
             continue
     return shades_list
@@ -235,6 +244,10 @@ def linkify(str):
     output_list.reverse()
     return output_list
 
+
+ua = UserAgent()
+
+
 #подключаемся к бд
 cred = credentials.Certificate('key.json')
 firebase_admin.initialize_app(cred, {
@@ -256,13 +269,12 @@ for company in companies:
         company_name = company_name + company_name_with_extra[i] + " "
     print("рассмотрим компанию " + company_name)
 
-    for i in range(1, 11):
-        try:
-            pause = random.uniform(3, 5)
-            potential_websites = search(company_name, tld="com", lang='en', num=3, stop=1, user_agent=user_agent, pause=pause)
-        except:
-            print("Skipping. Connnection error")
-            continue
+    try:
+        pause = random.uniform(3, 5)
+        potential_websites = search(company_name, tld="com", lang='en', num=3, stop=1, user_agent=user_agent, pause=pause)
+    except:
+        print("Skipping. Connnection error")
+        continue
 
     for site in potential_websites:
         print(site)
@@ -272,24 +284,43 @@ for company in companies:
             data = requests.get(site, headers=headers)
         except:
             continue
+
         site_soup = BeautifulSoup(data.text, features='lxml')
+
         if site_soup.find(string="brands") == None and site_soup.find(string="Brands") == None \
                 and site_soup.find(string="Shop by Brand") == None and site_soup.find(string="BRANDS") == None:
 
-            if site_soup.find(string="makeup") != None or site_soup.find(string="Makeup") != None or site_soup.find(string="MAKE UP") != None \
-                    or site_soup.find(string="Cosmetics") != None or site_soup.find(string="cosmetics") != None or site_soup.find(string="Make Up") != None \
-                    or site_soup.find('title') != None and ('Makeup' in site_soup.find('title').text or 'Cosmetics' in site_soup.find('title').text
-                    or 'Make up' in site_soup.find('title').text or 'Maquillage' in site_soup.find('title').text) or keywords_in_soup(site_soup):
-                if site_soup.find('title') != None and (company_name[:-1].lower() in site_soup.find('title').text.lower()):
-                    website_full_name = site
+            if site_soup.find(string="makeup") != None \
+                    or site_soup.find(string="Makeup") != None \
+                    or site_soup.find(string="MAKE UP") != None \
+                    or site_soup.find(string="Cosmetics") != None \
+                    or site_soup.find(string="cosmetics") != None \
+                    or site_soup.find(string="Make Up") != None \
+                    or site_soup.find('title') != None and ('Makeup' in site_soup.find('title').text
+                                                            or 'Cosmetics' in site_soup.find('title').text
+                                                            or 'Make up' in site_soup.find('title').text
+                                                            or 'Maquillage' in site_soup.find('title').text) \
+                    or keywords_in_soup(site_soup):
+
+
                 websitified_name = company_name[:-1].lower()
                 websitified_name = websitified_name.replace(" ", "")
                 websitified_name = websitified_name.replace(".", "")
-                if websitified_name in site:
+                if websitified_name in site or site_soup.find('title') != None and (company_name[:-1].lower() in site_soup.find('title').text.lower()):
                     website_full_name = site
-                print("сайт нашелся, это " + website_full_name)
+                    print("сайт нашелся, это " + website_full_name)
+                    break
 
-                break
+                company_name = unidecode.unidecode(company_name)
+                websitified_name = company_name[:-1].lower()
+                websitified_name = websitified_name.replace(" ", "")
+                websitified_name = websitified_name.replace(".", "")
+                if websitified_name in site or site_soup.find('title') != None and (
+                        company_name[:-1].lower() in site_soup.find('title').text.lower()):
+                    website_full_name = site
+                    print("сайт нашелся, это " + website_full_name)
+                    break
+
     if website_full_name == '':
         continue
 
@@ -311,7 +342,7 @@ for company in companies:
             website = website + "." + rest.split('.')[i]
 
     postfix = rest.split(website)[1].split('/')[0]
-    if postfix != '.com' and postfix != '.biz':
+    if postfix != '.com' and postfix != '.biz' and postfix != '.ru':
         continue
 
     if website == 'amazon' or website == 'twitter' or re.match('yahoo', website) or website == 'youtube':
@@ -320,18 +351,26 @@ for company in companies:
     try:
         data = requests.get(prefix + website + postfix, headers=headers)
     except:
-        data = requests.get(prefix + 'www.' + website + postfix, headers=headers)
+        try:
+            data = requests.get(prefix + 'www.' + website + postfix, headers=headers)
+        except:
+            continue
     site_soup = BeautifulSoup(data.text, features='lxml')
-    if site_soup.find(string="brands") != None or site_soup.find(string="Brands") != None \
-            or site_soup.find(string="Shop by Brand") != None or site_soup.find(string="BRANDS") != None:
-        continue
-    if site_soup.find(string=re.compile("Lips")) == None and site_soup.find(string=re.compile("Eye")) == None \
-            and site_soup.find(string=re.compile("LIPS")) == None \
-            and site_soup.find(string=re.compile("makeup")) == None and site_soup.find(string=re.compile("Makeup")) == None \
-            and site_soup.find(string=re.compile("MAKE UP")) == None \
-            and site_soup.find(string=re.compile("Cosmetics")) == None \
-            and site_soup.find(string=re.compile("cosmetics")) == None:
-        continue
+    if not (site_soup.find(string="brands") == None and site_soup.find(string="Brands") == None \
+            and site_soup.find(string="Shop by Brand") == None and site_soup.find(string="BRANDS") == None):
+
+        if not (site_soup.find(string="makeup") != None \
+                or site_soup.find(string="Makeup") != None \
+                or site_soup.find(string="MAKE UP") != None \
+                or site_soup.find(string="Cosmetics") != None \
+                or site_soup.find(string="cosmetics") != None \
+                or site_soup.find(string="Make Up") != None \
+                or site_soup.find('title') != None and ('Makeup' in site_soup.find('title').text
+                                                        or 'Cosmetics' in site_soup.find('title').text
+                                                        or 'Make up' in site_soup.find('title').text
+                                                        or 'Maquillage' in site_soup.find('title').text) \
+                or keywords_in_soup(site_soup)):
+            continue
     websitified_name = company_name[:-1].lower()
     websitified_name = websitified_name.replace(" ", "")
     if websitified_name not in prefix+website+postfix and company_name[:-1].lower() not in site_soup.find('title').text.lower():
@@ -344,8 +383,8 @@ for company in companies:
     print("постфикс " + postfix)
 
     #добавляем компанию в бд
-    if(ref.child('companies').order_by_child('name').equal_to(website).get() == None):
-        ref.child('companies').push({'name' : website})
+    if(ref.child('companies').order_by_child('name').equal_to(company_name).get() == None):
+        ref.child('companies').push({'name' : company_name})
 
     #читаем роботс.тхт
     rp = robotparser.RobotFileParser()
@@ -368,51 +407,58 @@ for company in companies:
     if sitemap_url != '':
         if sitemap_url[0] == '/':
             sitemap_url = prefix + website + postfix + sitemap_url
+
+    r = None
     if sitemap_url != '':
-        r = requests.get(sitemap_url, timeout = 10, headers = headers)
-    else:
+        try:
+            r = requests.get(sitemap_url, timeout = 10, headers = headers)
+        except:
+            sitemap_url = ''
+    if sitemap_url == '':
         sitemap_url = prefix + website  + postfix + "/sitemap.xml"
         try:
             r = requests.get(prefix + website  + postfix + "/sitemap.xml", timeout = 10, headers = headers)
         except:
-            r = requests.get(prefix + 'www.' + website + postfix + "/sitemap.xml", timeout=10, headers=headers)
+            try:
+                r = requests.get(prefix + 'www.' + website + postfix + "/sitemap.xml", timeout=10, headers=headers)
+            except:
+                sitemap_url = ''
 
     if not sys.warnoptions:
         warnings.simplefilter("ignore")
-    xml = r.text
-    sitemap_soup = BeautifulSoup(xml)
-
-    sitemapindex = sitemap_soup.find('sitemapindex')
-
-    if sitemapindex != None:
-        sitemap_search = sitemap_soup.find('loc', text=re.compile('product'))
-        if sitemap_search == None:
-            sitemap_search = sitemap_soup.find('loc', text=re.compile('(en)(.*)(store|beauty|makeup)'))
-        if sitemap_search == None:
-            sitemap_search = sitemap_soup.find("loc")
-        sitemap_url = sitemap_search.text
-        r  = requests.get(sitemap_url, timeout = 10, headers = headers)
-        data = r.text
-        sitemap_soup = BeautifulSoup(data)
 
     internal_urls = []
-    url_xmls = sitemap_soup.find_all("url")
-    if url_xmls != []:
-        for url in url_xmls:
-            internal_urls.append(url.findNext("loc").text)
-    if url_xmls == []:
-        url_xmls = sitemap_soup.find_all("a")
-        for url in url_xmls:
-            internal_urls.append(url.text)
-
-    all_items=[]
-
-    signal.signal(signal.SIGALRM, handler)
-    signal.alarm(300)
+    if r != None:
+        xml = r.text
+        sitemap_soup = BeautifulSoup(xml)
+        sitemapindex = sitemap_soup.find('sitemapindex')
+        if sitemapindex != None:
+            sitemap_search = sitemap_soup.find('loc', text=re.compile('product'))
+            if sitemap_search == None:
+                sitemap_search = sitemap_soup.find('loc', text=re.compile('(en)(.*)(store|beauty|makeup)'))
+            if sitemap_search == None:
+                sitemap_search = sitemap_soup.find("loc")
+            sitemap_url = sitemap_search.text
+            r  = requests.get(sitemap_url, timeout = 10, headers = headers)
+            data = r.text
+            sitemap_soup = BeautifulSoup(data)
+        internal_urls = []
+        url_xmls = sitemap_soup.find_all("url")
+        if url_xmls != []:
+            for url in url_xmls:
+                internal_urls.append(url.findNext("loc").text)
+        if url_xmls == []:
+            url_xmls = sitemap_soup.find_all("a")
+            for url in url_xmls:
+                internal_urls.append(url.text)
+        all_items=[]
+        signal.signal(signal.SIGALRM, handler)
+        signal.alarm(300)
 
     #если карты сайта не оказалось
     try:
         if(internal_urls == [] or sitemap_url == '' or len(internal_urls) < 10):
+            internal_urls = ref.child('companies').child(company_name).child('sitemap').get()['map']
             print("карты сайта нет, сделаем сами")
             visited_urls = []
             for_visiting_urls = [prefix + 'www.' + website  + postfix]
@@ -439,8 +485,9 @@ for company in companies:
                 except:
                     del for_visiting_urls[0]
             internal_urls = visited_urls
+            ref.child('companies').child(company_name).child('sitemap').push({'map': visited_urls})
     except:
-        internal_urls = visited_urls
+        internal_urls = []
 
     signal.alarm(0)
 
@@ -467,13 +514,12 @@ for company in companies:
         price_elements = price_elements + soup.find_all(_class=re.compile("Price"))
         price_elements = price_elements + soup.find_all(_class=re.compile("msrp"))
         price_elements = price_elements + soup.find_all(_class=re.compile("MSRP"))
-        if price_elements == []:
-            price_elements = soup.find_all(itemprop= re.compile("price|Price"))
+        price_elements = price_elements + soup.find_all(itemprop= re.compile("price|Price"))
         if price_elements != []:
-            for pr in price_elements:
-                pr.text.replace("\n", "")
-                pr.text.replace(" ", "")
-            prices = [e for e in price_elements if e.text != '' and not e.find_parents(attrs={"class": re.compile("header")}) and not e.find_parents(attrs={"class": re.compile("cart")})]
+
+            prices = [e for e in price_elements if e.text != ''
+                      and not e.find_parents(attrs={"class": re.compile("header")})
+                      and not e.find_parents(attrs={"class": re.compile("cart")})]
             if(prices != []):
                 price = None
                 for pr in prices:
@@ -497,8 +543,12 @@ for company in companies:
                     if temp != "" and '.' in temp:
                         price = temp
                         break
-                print(price)
-                price_flg = True
+                if price != None:
+                    print(price)
+                    price_flg = True
+                else:
+                    price_flg = False
+                    print("с этой страницы цена не распарсилась")
         else:
             price_flg = False
             print("с этой страницы цена не распарсилась")
@@ -519,13 +569,13 @@ for company in companies:
             name_elements = soup.find_all(id={re.compile("name")})
             name = process_names(name_elements)
         if name == '' or name == None:
+            name_elements = name_elements + soup.find_all("h1")
+            name = process_names(name_elements)
+        if name == '' or name == None:
             name_elements = soup.find_all(class_=re.compile("name"))
             name = process_names(name_elements)
         if name == '' or name == None:
             name_elements = soup.find_all(class_=re.compile("title"))
-            name = process_names(name_elements)
-        if name == '' or name == None:
-            name_elements = name_elements + soup.find_all("h1")
             name = process_names(name_elements)
         if name == '' or name == None:
             name_elements = name_elements + soup.find_all("h2")
@@ -544,15 +594,11 @@ for company in companies:
 
 
         #парсим картинки
-        if name_flg and price_flg:
-            pics = []
-            images = soup.find_all("img", alt=True)
-            if name != None:
-                for pic in images:
-                    if(name != None and name != ''):
-                        if name != None:
-                            if name in pic['alt'] and pic.has_attr('src'):
-                                pics.append(pic['src'])
+        if name_flg:
+            imgs = soup.find_all("img", alt=re.compile(name))
+            for img in imgs:
+                if img.has_attr('src'):
+                    pics.append(img['src'])
             pics = delete_small_pics(pics)
 
             if pics == [] and name != None:
@@ -574,8 +620,8 @@ for company in companies:
                     found = soup.find_all(srcset=re.compile(link_name))
                     if found != []:
                         for pic in found:
-                            if pic['src'] not in pics:
-                                pics.append(pic['src'])
+                            if pic['srcset'] not in pics:
+                                pics.append(pic['srcset'])
 
                 pics = delete_small_pics(pics)
 
@@ -596,11 +642,11 @@ for company in companies:
 
         else:
             pic_flg = False
-            print("нет смысла смотреть картинка")
+            print("нет смысла смотреть картинки")
 
 
 
-        if name_flg and price_flg:
+        if name_flg:
             #описание
             descriptions = soup.find_all(_class = re.compile('description'))
             if descriptions == []:
@@ -617,7 +663,7 @@ for company in companies:
 
 
 
-        if name_flg and price_flg:
+        if name_flg:
             #категория
             category = ''
             for keyword in keywords:
@@ -676,11 +722,14 @@ for company in companies:
 
         #добавляем продукт в бд
         if pic_flg and name_flg and price_flg and shades_flg and desc_flg:
-            if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
-                ref.child('companies').child(website).child(category).push({'name': name, 'price':price, 'pics': pics, 'shades': shades, 'description': desc})
+            if (len(ref.child('companies').child(company_name).order_by_child('name').equal_to(name).get()) == 0):
+                ref.child('companies').child(company_name).child(category).push({'name': name, 'price':price, 'pics': pics, 'shades': shades, 'description': desc})
         elif pic_flg and name_flg and price_flg and shades_flg:
-            if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
-                ref.child('companies').child(website).child(category).push({'name': name, 'pics': pics, 'shades': shades, 'description': desc})
+            if (len(ref.child('companies').child(company_name).order_by_child('name').equal_to(name).get()) == 0):
+                ref.child('companies').child(company_name).child(category).push({'name': name, 'pics': pics, 'shades': shades, 'description': desc})
         elif pic_flg and name_flg and price_flg:
-            if (len(ref.child('companies').child(website).order_by_child('name').equal_to(name).get()) == 0):
-                ref.child('companies').child(website).child(category).push({'name': name, 'pics': pics})
+            if (len(ref.child('companies').child(company_name).order_by_child('name').equal_to(name).get()) == 0):
+                ref.child('companies').child(company_name).child(category).push({'name': name, 'pics': pics})
+        elif pic_flg and name_flg and shades_flg and desc_flg:
+            if (len(ref.child('companies').child(company_name).order_by_child('name').equal_to(name).get()) == 0):
+                ref.child('companies').child(company_name).child(category).push({'name': name, 'pics': pics, 'shades': shades, 'description': desc})
