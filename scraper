@@ -39,9 +39,10 @@ def process_names(name_elements):
                 name_temp = name_temp.strip(" ")
                 name_temp = ''.join(name_temp.splitlines())
 
-                if page_title.string != None:
-                    if name_temp in page_title.string.strip(" ") and name_temp != '':
-                        frequency_map[len(soup.find_all(string=re.compile(name_temp)))] = name_temp
+                if page_title != None:
+                    if page_title.string != None:
+                        if name_temp in page_title.string.strip(" ") and name_temp != '':
+                            frequency_map[len(soup.find_all(string=re.compile(name_temp)))] = name_temp
 
                 if name_temp != None and name_temp != '':
                     linkified_names = linkify(name_temp)
@@ -106,9 +107,13 @@ def delete_small_pics(pics):
         try:
             img_data = requests.get(src).content
         except:
-            src_els = src.split('://')
-            src = src_els[0]+ '://www.' + src_els[1]
-            img_data = requests.get(src).content
+            if src[:4] == 'http':
+                src_els = src.split('://')
+                src = src_els[0]+ '://www.' + src_els[1]
+                img_data = requests.get(src).content
+            else:
+                src = prefix + website + postfix + '/' + src
+                img_data = requests.get(src).content
 
         with open('aaa' + extens, 'wb') as handler:
             handler.write(img_data)
@@ -189,7 +194,16 @@ def shades_from_list_of_urls(list):
             continue
         if extens == 'jpeg':
             extens = '.jpeg'
-        img_data = requests.get(src).content
+        try:
+            img_data = requests.get(src).content
+        except:
+            if src[:4] == 'http':
+                src_els = src.split('://')
+                src = src_els[0]+ '://www.' + src_els[1]
+                img_data = requests.get(src).content
+            else:
+                src = prefix + website + postfix + '/' + src
+                img_data = requests.get(src).content
         with open('aaa' + extens, 'wb') as handler:
             handler.write(img_data)
 
@@ -342,7 +356,7 @@ for company in companies:
             website = website + "." + rest.split('.')[i]
 
     postfix = rest.split(website)[1].split('/')[0]
-    if postfix != '.com' and postfix != '.biz' and postfix != '.ru':
+    if postfix != '.com' and postfix != '.biz' and postfix != '.ru' and postfix != '.us':
         continue
 
     if website == 'amazon' or website == 'twitter' or re.match('yahoo', website) or website == 'youtube':
@@ -402,8 +416,16 @@ for company in companies:
         for line in robots.split("\n"):
             if line.startswith('Sitemap'):
                 sitemap_url = line.split(': ')[1].split(' ')[0]
+                break
     except:
-        print("робот.тхт не прочитался")
+        try:
+            robots = requests.get(prefix + 'www.' + website + postfix + "/robots.txt", timeout=10, headers=headers).text
+            for line in robots.split("\n"):
+                if line.startswith('Sitemap'):
+                    sitemap_url = line.split(': ')[1].split(' ')[0]
+                    break
+        except:
+            print("робот.тхт не прочитался")
     if sitemap_url != '':
         if sitemap_url[0] == '/':
             sitemap_url = prefix + website + postfix + sitemap_url
@@ -435,7 +457,7 @@ for company in companies:
         if sitemapindex != None:
             sitemap_search = sitemap_soup.find('loc', text=re.compile('product'))
             if sitemap_search == None:
-                sitemap_search = sitemap_soup.find('loc', text=re.compile('(en)(.*)(store|beauty|makeup)'))
+                sitemap_search = sitemap_soup.find('loc', text=re.compile('(en)(.*)(store|beauty|makeup)?'))
             if sitemap_search == None:
                 sitemap_search = sitemap_soup.find("loc")
             sitemap_url = sitemap_search.text
@@ -457,8 +479,7 @@ for company in companies:
 
     #если карты сайта не оказалось
     try:
-        if(internal_urls == [] or sitemap_url == '' or len(internal_urls) < 10):
-            internal_urls = ref.child('companies').child(company_name).child('sitemap').get()['map']
+        if(internal_urls == [] or sitemap_url == '' or len(internal_urls) < 50 or internal_urls[0][:4] != 'http'):
             print("карты сайта нет, сделаем сами")
             visited_urls = []
             for_visiting_urls = [prefix + 'www.' + website  + postfix]
@@ -509,6 +530,7 @@ for company in companies:
 
 
         #парсим цену
+        price = None
         price_elements = soup.find_all(True, {'class': re.compile("price")})
         price_elements = price_elements + soup.find_all(True, {'class': re.compile("money")})
         price_elements = price_elements + soup.find_all(_class=re.compile("Price"))
@@ -521,12 +543,11 @@ for company in companies:
                       and not e.find_parents(attrs={"class": re.compile("header")})
                       and not e.find_parents(attrs={"class": re.compile("cart")})]
             if(prices != []):
-                price = None
                 for pr in prices:
                     temp = pr.text
                     temp.replace(" ", "")
                     temp = ''.join(temp.splitlines())
-                    if temp != "" and '.' in temp:
+                    if temp != "" and ('$' in temp or '.' in temp):
                         price = temp
                         break
                 if price != None:
@@ -552,7 +573,8 @@ for company in companies:
         else:
             price_flg = False
             print("с этой страницы цена не распарсилась")
-
+        if price != None:
+            pic_flg = True
 
 
 
@@ -596,6 +618,7 @@ for company in companies:
         #парсим картинки
         if name_flg:
             imgs = soup.find_all("img", alt=re.compile(name))
+            pics = []
             for img in imgs:
                 if img.has_attr('src'):
                     pics.append(img['src'])
@@ -648,6 +671,7 @@ for company in companies:
 
         if name_flg:
             #описание
+            desc = None
             descriptions = soup.find_all(_class = re.compile('description'))
             if descriptions == []:
                 descriptions = soup.find_all(id=re.compile('description'))
@@ -718,7 +742,8 @@ for company in companies:
 
 
 
-
+        company_name = company_name.replace('.', " ")
+        company_name = company_name.replace('/', " ")
 
         #добавляем продукт в бд
         if pic_flg and name_flg and price_flg and shades_flg and desc_flg:
