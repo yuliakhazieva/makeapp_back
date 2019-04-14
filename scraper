@@ -1,12 +1,9 @@
 import re
 from bs4 import BeautifulSoup
-import sys
 import warnings
-from urllib import robotparser
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
-from PIL import Image
 import operator
 from googlesearch import search
 import requests
@@ -14,6 +11,111 @@ import random
 from fake_useragent import UserAgent
 import signal
 import unidecode
+import numpy as np
+import sys
+import tensorflow as tf
+from object_detection.utils import label_map_util
+import urllib.parse
+from distutils.version import StrictVersion
+from PIL import Image
+
+# This is needed since the notebook is stored in the object_detection folder.
+sys.path.append("..")
+from object_detection.utils import ops as utils_ops
+
+if StrictVersion(tf.__version__) < StrictVersion('1.12.0'):
+  raise ImportError('Please upgrade your TensorFlow installation to v1.12.*.')
+
+MODEL_NAME = 'inference_graph'
+PATH_TO_FROZEN_GRAPH ='object_detection/inference_graph_new/frozen_inference_graph.pb'
+PATH_TO_LABELS = '/Users/a1/Desktop/object-detection.pbtxt'
+
+detection_graph = tf.Graph()
+with detection_graph.as_default():
+  od_graph_def = tf.GraphDef()
+  with tf.gfile.GFile(PATH_TO_FROZEN_GRAPH, 'rb') as fid:
+    serialized_graph = fid.read()
+    od_graph_def.ParseFromString(serialized_graph)
+    tf.import_graph_def(od_graph_def, name='')
+
+category_index = label_map_util.create_category_index_from_labelmap(PATH_TO_LABELS, use_display_name=True)
+
+def get_rivgosh():
+    pagerivgosh = requests.get('https://shop.rivegauche.ru/search?text=' + urllib.parse.quote_plus(name) + '#rgshare=' + urllib.parse.quote_plus(name), timeout=10)
+    rivgosh_soup = BeautifulSoup(pagerivgosh.content, 'html.parser')
+    return rivgosh_soup.find("span", {"class": "price"}).text
+
+
+def get_ildebote():
+    pageilde = requests.get('https://iledebeaute.ru/shop/search?q=' + urllib.parse.quote_plus(name), timeout=10, headers=headers)
+    ilde_soup = BeautifulSoup(pageilde.content, 'html.parser')
+    if(ilde_soup.find(string = 'ничего не найдено.') != None):
+        return None
+    if(name in ilde_soup.find('p', {'class': 'b-showcase__item__link'}).text):
+        return ilde_soup.find("span", {"class": "def"}).text
+    return None
+
+def get_goldenapple():
+    pageilde = requests.get('https://goldapple.ru/catalogsearch/result/?q=' + urllib.parse.quote_plus(name), timeout=10, headers=headers)
+    ilde_soup = BeautifulSoup(pageilde.content, 'html.parser')
+    if (ilde_soup.find("span", {"class": "price"}) == None):
+        return None
+    return ilde_soup.find("span", {"class": "price"}).text
+
+
+def load_image_into_numpy_array(image):
+  (im_width, im_height) = image.size
+  return np.array(image.getdata()).reshape(
+      (im_height, im_width, 3)).astype(np.uint8)
+
+def run_inference_for_single_image(image, graph):
+  with graph.as_default():
+    with tf.Session() as sess:
+      # Get handles to input and output tensors
+      ops = tf.get_default_graph().get_operations()
+      all_tensor_names = {output.name for op in ops for output in op.outputs}
+      tensor_dict = {}
+      for key in [
+          'num_detections', 'detection_boxes', 'detection_scores',
+          'detection_classes', 'detection_masks'
+      ]:
+        tensor_name = key + ':0'
+        if tensor_name in all_tensor_names:
+          tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(
+              tensor_name)
+      if 'detection_masks' in tensor_dict:
+        # The following processing is only for single image
+        detection_boxes = tf.squeeze(tensor_dict['detection_boxes'], [0])
+        detection_masks = tf.squeeze(tensor_dict['detection_masks'], [0])
+        # Reframe is required to translate mask from box coordinates to image coordinates and fit the image size.
+        real_num_detection = tf.cast(tensor_dict['num_detections'][0], tf.int32)
+        detection_boxes = tf.slice(detection_boxes, [0, 0], [real_num_detection, -1])
+        detection_masks = tf.slice(detection_masks, [0, 0, 0], [real_num_detection, -1, -1])
+        detection_masks_reframed = utils_ops.reframe_box_masks_to_image_masks(
+            detection_masks, detection_boxes, image.shape[1], image.shape[2])
+        detection_masks_reframed = tf.cast(
+            tf.greater(detection_masks_reframed, 0.5), tf.uint8)
+        # Follow the convention by adding back the batch dimension
+        tensor_dict['detection_masks'] = tf.expand_dims(
+            detection_masks_reframed, 0)
+      image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
+
+      # Run inference
+      output_dict = sess.run(tensor_dict,
+                             feed_dict={image_tensor: image})
+
+      # all outputs are float32 numpy arrays, so convert types as appropriate
+      output_dict['num_detections'] = int(output_dict['num_detections'][0])
+      output_dict['detection_classes'] = output_dict[
+          'detection_classes'][0].astype(np.uint8)
+      output_dict['detection_boxes'] = output_dict['detection_boxes'][0]
+      output_dict['detection_scores'] = output_dict['detection_scores'][0]
+      if 'detection_masks' in output_dict:
+        output_dict['detection_masks'] = output_dict['detection_masks'][0]
+  return output_dict
+
+
+
 
 def process_names(name_elements):
     name = None
@@ -110,7 +212,10 @@ def delete_small_pics(pics):
             if src[:4] == 'http':
                 src_els = src.split('://')
                 src = src_els[0]+ '://www.' + src_els[1]
-                img_data = requests.get(src).content
+                try:
+                    img_data = requests.get(src).content
+                except:
+                    print("oops")
             else:
                 src = prefix + website + postfix + '/' + src
                 img_data = requests.get(src).content
@@ -390,23 +495,17 @@ for company in companies:
     if websitified_name not in prefix+website+postfix and company_name[:-1].lower() not in site_soup.find('title').text.lower():
         continue
 
-
-
-    print("префикс " + prefix)
-    print("имя " + website)
-    print("постфикс " + postfix)
-
     #добавляем компанию в бд
     if(ref.child('companies').order_by_child('name').equal_to(company_name).get() == None):
         ref.child('companies').push({'name' : company_name})
 
-    #читаем роботс.тхт
-    rp = robotparser.RobotFileParser()
-    rp.set_url(prefix + website + postfix + "/robots.txt")
-    try:
-        rp.read()
-    except:
-        print("робот.тхт не прочитался")
+    # #читаем роботс.тхт
+    # rp = robotparser.RobotFileParser()
+    # rp.set_url(prefix + website + postfix + "/robots.txt")
+    # try:
+    #     rp.read()
+    # except:
+    #     print("робот.тхт не прочитался")
 
     headers = {'User-Agent':user_agent}
     #пытаемся получить и прочесть карту сайта
@@ -419,10 +518,17 @@ for company in companies:
                 break
     except:
         try:
-            robots = requests.get(prefix + 'www.' + website + postfix + "/robots.txt", timeout=10, headers=headers).text
+            rbt_url = prefix + 'www.' + website + postfix + "/robots.txt"
+            robots = requests.get(rbt_url, timeout=10, headers=headers).text
             for line in robots.split("\n"):
-                if line.startswith('Sitemap'):
-                    sitemap_url = line.split(': ')[1].split(' ')[0]
+                if line.startswith('Sitemap') or 'sitemap' in line:
+                    try:
+                        if line.startswith('Sitemap'):
+                            sitemap_url = line.split(': ')[1].split(' ')[0]
+                        else:
+                            sitemap_url = line
+                    except:
+                        continue
                     break
         except:
             print("робот.тхт не прочитался")
@@ -461,7 +567,10 @@ for company in companies:
             if sitemap_search == None:
                 sitemap_search = sitemap_soup.find("loc")
             sitemap_url = sitemap_search.text
-            r  = requests.get(sitemap_url, timeout = 10, headers = headers)
+            try:
+                r  = requests.get(sitemap_url, timeout = 10, headers = headers)
+            except:
+                continue
             data = r.text
             sitemap_soup = BeautifulSoup(data)
         internal_urls = []
@@ -507,14 +616,15 @@ for company in companies:
                     del for_visiting_urls[0]
             internal_urls = visited_urls
             ref.child('companies').child(company_name).child('sitemap').push({'map': visited_urls})
-    except:
-        internal_urls = []
+    except Exception as error:
+        print(error)
 
     signal.alarm(0)
 
 
 
     for url in internal_urls:
+
         print("--------------------------------------------------------")
         print("looking at " + url)
         item_array=[]
@@ -523,11 +633,6 @@ for company in companies:
         except:
             continue
         soup = BeautifulSoup(page.content, 'html.parser')
-
-
-
-
-
 
         #парсим цену
         price = None
@@ -575,6 +680,7 @@ for company in companies:
             print("с этой страницы цена не распарсилась")
         if price != None:
             pic_flg = True
+            price = re.sub("\D", "", price)
 
 
 
@@ -583,7 +689,6 @@ for company in companies:
 
 
         page_title = soup.find("title")
-        name = None
         #парсим название
         name_elements = soup.find_all(True, itemprop={re.compile("name")})
         name = process_names(name_elements)
@@ -668,10 +773,10 @@ for company in companies:
             print("нет смысла смотреть картинки")
 
 
-
+        desc = None
+        desc_flg = False
         if name_flg:
             #описание
-            desc = None
             descriptions = soup.find_all(_class = re.compile('description'))
             if descriptions == []:
                 descriptions = soup.find_all(id=re.compile('description'))
@@ -692,13 +797,19 @@ for company in companies:
             category = ''
             for keyword in keywords:
                 if keyword in name:
-                    category = keyword
+                    if ('brush' in name or 'Brush' in name):
+                        category = 'Brush'
+                    else:
+                        category = keyword.lower()
                     break
             if category == '':
                 if desc != None:
                     for keyword in keywords:
                         if keyword in desc:
-                            category = keyword
+                            if('brush' in desc or 'Brush' in desc):
+                                category = 'Brush'
+                            else:
+                                category = keyword.lower()
                             break
             if category == '':
                 category = 'other'
@@ -739,22 +850,128 @@ for company in companies:
                 shades_flg = False
                 print("с этой страницы оттенки не распарсились")
 
+        color_flag = False
+        if name_flg:
+            if category == 'lipstick' and pics != []:
+                src = pics[0]
+                if src == '':
+                    continue
+                if src[0] == '/' and src[1] == '/':
+                    src = prefix + src[2:]
+                if src[0] == '/':
+                    src = prefix + website + postfix + src
+
+                extens = src.split('?')[0][-4:]
+                if extens != '.png' and extens != '.jpg' and extens != 'jpeg':
+                    continue
+                if extens == 'jpeg':
+                    extens = '.jpeg'
+
+                try:
+                    img_data = requests.get(src).content
+                except:
+                    if src[:4] == 'http':
+                        src_els = src.split('://')
+                        src = src_els[0] + '://www.' + src_els[1]
+                        img_data = requests.get(src).content
+                    else:
+                        src = prefix + website + postfix + '/' + src
+                        img_data = requests.get(src).content
+
+                with open('aaa' + extens, 'wb') as handler:
+                    handler.write(img_data)
+
+                try:
+                    image = Image.open('aaa' + extens)
+                    image_np = load_image_into_numpy_array(image)
+                    image_np_expanded = np.expand_dims(image_np, axis=0)
+                    output_dict = run_inference_for_single_image(image_np_expanded, detection_graph)
+                    box = output_dict['detection_boxes'][0]
+                    print(box)
+                    width, height = image.size
+                    print(width)
+                    print(height)
+
+                    ymin = box[0] * height
+                    xmin = box[1] * width
+                    ymax = box[2] * height
+                    xmax = box[3] * width
+
+                    # print(box[1]*width, box[0]*height, width-box[3]*width, height-box[2]*height)
+                    cropped = image.crop((xmin, ymin, xmax, ymax))
+                    # border = (box[0]*width, box[2]*height, box[1]*width, box[3]*height)
+                    # cropped = ImageOps.crop(image, border)
+                    cropped = cropped.convert('RGB')
+                    colors = cropped.getcolors(maxcolors=10000)
+                    colors.sort(key=operator.itemgetter(0), reverse=True)
+                    colors = colors[:3]
+                    for i in range(0, len(colors) - 1):
+                        if colors[i][1][0] + colors[i][1][1] + colors[i][1][2] >= 750 \
+                                or colors[i][1][0] + colors[i][1][1] + colors[i][1][2] <= 15:
+                            del colors[i]
+                    if colors[0] != None:
+                        color_flag = True
+                        color = colors[0][1]
+                except Exception as e:
+                    print(e)
 
 
 
         company_name = company_name.replace('.', " ")
         company_name = company_name.replace('/', " ")
+        if name != None:
+            name = name.replace('.', " ")
+            name = name.replace('/', " ")
+            name = name.replace('%', " ")
 
-        #добавляем продукт в бд
-        if pic_flg and name_flg and price_flg and shades_flg and desc_flg:
-            if (len(ref.child('companies').child(company_name).order_by_child('name').equal_to(name).get()) == 0):
-                ref.child('companies').child(company_name).child(category).push({'name': name, 'price':price, 'pics': pics, 'shades': shades, 'description': desc})
-        elif pic_flg and name_flg and price_flg and shades_flg:
-            if (len(ref.child('companies').child(company_name).order_by_child('name').equal_to(name).get()) == 0):
-                ref.child('companies').child(company_name).child(category).push({'name': name, 'pics': pics, 'shades': shades, 'description': desc})
-        elif pic_flg and name_flg and price_flg:
-            if (len(ref.child('companies').child(company_name).order_by_child('name').equal_to(name).get()) == 0):
-                ref.child('companies').child(company_name).child(category).push({'name': name, 'pics': pics})
-        elif pic_flg and name_flg and shades_flg and desc_flg:
-            if (len(ref.child('companies').child(company_name).order_by_child('name').equal_to(name).get()) == 0):
-                ref.child('companies').child(company_name).child(category).push({'name': name, 'pics': pics, 'shades': shades, 'description': desc})
+
+        old_price = ref.child('products').child(name + "Ф" + company_name + price).child('price').get()
+        if(old_price != None):
+            if (int(re.sub('[^0-9]','', old_price)) > int(re.sub('[^0-9]','', price))):
+                ref.child('sale').update({name + "Ф" + company_name + price: {'old': old_price, 'new': price}})
+
+        old_product = ref.child('products').child(name + "Ф" + company_name + price).get()
+        if (old_product == {}):
+            ref.child('new').update({name + "Ф" + company_name + price: 0})
+
+
+        dict = {}
+        if (name_flg and pic_flg and price_flg):
+            dict['pics'] = pics
+            dict['name'] = name
+            dict['price'] = price
+            dict['rating'] = '?'
+            dict['numReviews'] = '0'
+            if (desc_flg):
+                dict['description'] = desc
+            if (shades_flg):
+                dict['shades'] = shades
+            if (color_flag):
+                dict['r'] = color[0]
+                dict['g'] = color[1]
+                dict['b'] = color[2]
+            else:
+                dict['r'] = 0
+                dict['g'] = 0
+                dict['b'] = 0
+
+            rivgosh = get_rivgosh()
+            if(rivgosh == None):
+                dict['rivgosh'] = 'N/A'
+            else:
+                dict['rivgosh'] = rivgosh
+
+            ilde = get_ildebote()
+            if(ilde == None):
+                dict['ildebote'] = 'N/A'
+            else:
+                dict['ildebote'] = ilde
+
+            gold = get_goldenapple()
+            if (gold == None):
+                dict['goldenapple'] = 'N/A'
+            else:
+                dict['goldenapple'] = gold
+
+            ref.child('products').update({name + "Ф" + company_name + price: dict})
+            ref.child('companies').child(company_name).child(category).update({name + "Ф" + company_name + price: 0})
