@@ -1,0 +1,26 @@
+<annotation>
+	<folder>трейн</folder>
+	<filename>prod-shot-mobile-sandy-sunrise-2x.jpg</filename>
+	<path>\\Mac\Home\Desktop\трейн\prod-shot-mobile-sandy-sunrise-2x.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>375</width>
+		<height>468</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>tip</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>164</xmin>
+			<ymin>214</ymin>
+			<xmax>209</xmax>
+			<ymax>434</ymax>
+		</bndbox>
+	</object>
+</annotation>

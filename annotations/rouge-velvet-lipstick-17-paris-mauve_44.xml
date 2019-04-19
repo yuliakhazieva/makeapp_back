@@ -1,0 +1,26 @@
+<annotation>
+	<folder>трейн</folder>
+	<filename>rouge-velvet-lipstick-17-paris-mauve_44.jpg</filename>
+	<path>\\Mac\Home\Desktop\трейн\rouge-velvet-lipstick-17-paris-mauve_44.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>400</width>
+		<height>400</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>tip</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>244</xmin>
+			<ymin>6</ymin>
+			<xmax>292</xmax>
+			<ymax>73</ymax>
+		</bndbox>
+	</object>
+</annotation>

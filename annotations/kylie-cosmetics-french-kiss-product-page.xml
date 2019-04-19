@@ -1,0 +1,26 @@
+<annotation>
+	<folder>трейн</folder>
+	<filename>kylie-cosmetics-french-kiss-product-page.jpg</filename>
+	<path>\\Mac\Home\Desktop\трейн\kylie-cosmetics-french-kiss-product-page.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1300</width>
+		<height>1710</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>tip</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>704</xmin>
+			<ymin>701</ymin>
+			<xmax>893</xmax>
+			<ymax>1642</ymax>
+		</bndbox>
+	</object>
+</annotation>

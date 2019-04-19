@@ -2,29 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9aec8254-a916-44fd-8f32-eb3a886d39ee" name="Default" comment="">
-      <change afterPath="$PROJECT_DIR$/annotations/8052.750.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/8080.750.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/8087.750.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/8120.750.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/8128.750.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/8267.750.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/8276.750.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/Kylie-Cosmetics-Matte-Liquid-Lipstick-Bare.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/creep-swatch.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/givemeakiss.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/kylie-cosmetics-french-kiss-product-page.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/prod-shot-mobile-donuts-go-nut-2x.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/prod-shot-mobile-dusty-romance-2x.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/prod-shot-mobile-glittery-rose-2x.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/prod-shot-mobile-guns-n-rose-2x.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/prod-shot-mobile-rose-whip-2x.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/prod-shot-mobile-sandy-sunrise-2x.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/prod-shot-mobile-sweet-tin-2x.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/rouge-edition-11-fraise-remix_1.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/rouge-edition-velvet-01-personne-ne-rouge_12.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/annotations/rouge-velvet-lipstick-17-paris-mauve_44.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/generate_tf_record.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/xml_to_csv.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/aaa.jpeg" beforeDir="false" afterPath="$PROJECT_DIR$/aaa.jpeg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/aaa.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/aaa.jpg" afterDir="false" />
@@ -42,7 +19,7 @@
   <component name="CoverageDataManager">
     <SUITE FILE_PATH="coverage/makeapp_scraper$amazon_spider.coverage" NAME="amazon_spider Coverage Results" MODIFIED="1547896356664" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/makeapp_scraper$xml_to_csv.coverage" NAME="xml_to_csv Coverage Results" MODIFIED="1554571555286" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/makeapp_scraper$scraper.coverage" NAME="scraper Coverage Results" MODIFIED="1555266577568" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/makeapp_scraper$scraper.coverage" NAME="scraper Coverage Results" MODIFIED="1555709409821" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/untitled1$scraper.coverage" NAME="scraper Coverage Results" MODIFIED="1547152566212" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="FileEditorManager">
@@ -50,8 +27,8 @@
       <file leaf-file-name="scraper" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scraper">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="16507">
-              <caret line="971" column="42" selection-start-line="971" selection-start-column="42" selection-end-line="971" selection-end-column="42" />
+            <state relative-caret-position="314">
+              <caret line="1093" selection-start-line="1093" selection-end-line="1093" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -62,8 +39,8 @@
       <file leaf-file-name="brands.txt" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/brands.txt">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="450">
-              <caret line="30" column="10" selection-start-line="30" selection-start-column="10" selection-end-line="30" selection-end-column="10" />
+            <state>
+              <caret column="13" selection-start-column="13" selection-end-column="13" />
             </state>
           </provider>
         </entry>
@@ -79,36 +56,36 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>93</find>
-      <find>99</find>
-      <find>benefit</find>
-      <find>87</find>
-      <find>86</find>
-      <find>essen</find>
-      <find>gloss</find>
-      <find>huda</find>
-      <find>getcolors</find>
-      <find>csv_input</find>
-      <find>delete</find>
-      <find>mary</find>
-      <find>oops</find>
-      <find>lower</find>
-      <find>lip</find>
-      <find>soup</find>
-      <find>find</find>
-      <find>make up f</find>
-      <find>find(</find>
       <find>find_all(True,</find>
-      <find>find_all</find>
       <find>string=</find>
       <find>'class':</find>
       <find>'class'</find>
       <find>class</find>
-      <find>_class</find>
       <find>span</find>
       <find>title</find>
       <find>clari</find>
       <find>estee</find>
+      <find>_class</find>
+      <find>sort</find>
+      <find>find</find>
+      <find>findAll</find>
+      <find>find_all</find>
+      <find>soup</find>
+      <find>^</find>
+      <find>post</find>
+      <find>postfix =</find>
+      <find>page_title</find>
+      <find>сайт</find>
+      <find>oops</find>
+      <find>---</find>
+      <find>while</find>
+      <find>pric</find>
+      <find>price</find>
+      <find>replace</find>
+      <find>signal</find>
+      <find>print</find>
+      <find>pics</find>
+      <find>saint</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -120,8 +97,8 @@
         <option value="$PROJECT_DIR$/amazon_spider.py" />
         <option value="$PROJECT_DIR$/xml_to_csv.py" />
         <option value="$PROJECT_DIR$/generate_tf_record.py" />
-        <option value="$PROJECT_DIR$/scraper" />
         <option value="$PROJECT_DIR$/brands.txt" />
+        <option value="$PROJECT_DIR$/scraper" />
       </list>
     </option>
   </component>
@@ -272,14 +249,13 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1440" height="900" extended-state="0" />
-    <editor active="true" />
     <layout>
       <window_info anchor="bottom" id="TODO" order="6" />
-      <window_info anchor="bottom" id="Event Log" order="7" sideWeight="0.32188842" side_tool="true" visible="true" weight="0.28678304" />
+      <window_info anchor="bottom" id="Event Log" order="7" sideWeight="0.32188842" side_tool="true" weight="0.5673317" />
       <window_info anchor="bottom" id="Database Changes" order="7" show_stripe_button="false" />
-      <window_info anchor="bottom" id="Version Control" order="7" />
+      <window_info anchor="bottom" id="Version Control" order="7" weight="0.32917705" />
       <window_info anchor="bottom" id="Python Console" order="7" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.6781116" visible="true" weight="0.28678304" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.6781116" visible="true" weight="0.36034912" />
       <window_info anchor="bottom" id="Terminal" order="7" weight="0.32896653" />
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.19670959" />
       <window_info anchor="bottom" id="Docker" order="7" show_stripe_button="false" />
@@ -293,9 +269,9 @@
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="bottom" id="Message" order="0" />
+      <window_info anchor="bottom" id="Concurrent Activities Diagram" order="8" visible="true" weight="0.32917705" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32917705" />
-      <window_info anchor="bottom" id="Concurrent Activities Diagram" order="8" weight="0.3297546" />
     </layout>
     <layout-to-restore>
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
@@ -337,53 +313,53 @@
           </properties>
         </breakpoint>
       </default-breakpoints>
-      <option name="time" value="663" />
+      <option name="time" value="742" />
     </breakpoint-manager>
   </component>
   <component name="debuggerHistoryManager">
     <expressions id="evaluateCodeFragment">
       <expression>
-        <expression-string>podruzka_soup.find_all(False, {'class':'value value--current'})</expression-string>
+        <expression-string>desc</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>podruzka_soup.find_all(True, {'class':'value value--current'})</expression-string>
+        <expression-string>desc_flg</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>podruzka_soup.find_all(True, div)</expression-string>
+        <expression-string>('brush' in desc or 'Brush' in desc)</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>podruzka_soup.find_all(True, &quot;div&quot;)</expression-string>
+        <expression-string>re.match('..-..', 'es_ar')</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>podruzka_soup.find_all(True, &quot;span&quot;)</expression-string>
+        <expression-string>url.split('/')[3]</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>podruzka_soup.find_all(True, &quot;value value--current&quot;)</expression-string>
+        <expression-string>re.match('..-..', url.split('/')[3])</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>podruzka_soup.find_all(True, name=&quot;span&quot;)</expression-string>
+        <expression-string>(len(url.split('/')[3]) == 2 or re.match('..-..', url.split('/')[3]))</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>podruzka_soup.find(&quot;span&quot;)</expression-string>
+        <expression-string>(len(url.split('/')[3]) == 2 or re.match('..-..', url.split('/')[3])) and 'en' not in url.split('/')[3] and 'us' not in url.split('/')[3] and 'uk' not in url.split('/')[3]</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>podruzka_soup.find(&quot;div&quot;, {&quot;class&quot;: &quot;value value--current&quot;})</expression-string>
+        <expression-string>len(url.split('/')[3]) == 2 and 'en' not in url.split('/')[3] and 'us' not in url.split('/')[3] and 'uk' not in url.split('/')[3]</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
       </expression>
@@ -655,13 +631,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/venv/untitled1/lib/python3.6/site-packages/requests/api.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="121">
-          <caret line="73" selection-start-line="73" selection-end-line="73" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$USER_HOME$/venv/untitled1/lib/python3.6/site-packages/requests/models.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="96">
@@ -740,24 +709,47 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$USER_HOME$/venv/untitled1/lib/python3.6/site-packages/requests/api.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="139">
+          <caret line="62" column="4" selection-start-line="62" selection-start-column="4" selection-end-line="62" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$USER_HOME$/venv/untitled1/lib/python3.6/site-packages/bs4/element.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="240">
-          <caret line="1305" column="8" selection-start-line="1305" selection-start-column="8" selection-end-line="1305" selection-end-column="8" />
+        <state relative-caret-position="289">
+          <caret line="1059" selection-start-line="1059" selection-end-line="1059" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/aaa.jpeg">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/aaa.jpg">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/aaa.png">
+      <provider selected="true" editor-type-id="images" />
+    </entry>
+    <entry file="file:///usr/local/Cellar/python/3.6.5/Frameworks/Python.framework/Versions/3.6/lib/python3.6/http/client.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="131">
+          <caret line="1284" selection-start-line="1284" selection-end-line="1284" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/brands.txt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="450">
-          <caret line="30" column="10" selection-start-line="30" selection-start-column="10" selection-end-line="30" selection-end-column="10" />
+        <state>
+          <caret column="13" selection-start-column="13" selection-end-column="13" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/scraper">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="16507">
-          <caret line="971" column="42" selection-start-line="971" selection-start-column="42" selection-end-line="971" selection-end-column="42" />
+        <state relative-caret-position="314">
+          <caret line="1093" selection-start-line="1093" selection-end-line="1093" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>

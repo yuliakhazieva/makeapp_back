@@ -1,0 +1,26 @@
+<annotation>
+	<folder>трейн</folder>
+	<filename>prod-shot-mobile-donuts-go-nut-2x.jpg</filename>
+	<path>\\Mac\Home\Desktop\трейн\prod-shot-mobile-donuts-go-nut-2x.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>375</width>
+		<height>468</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>tip</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>159</xmin>
+			<ymin>27</ymin>
+			<xmax>216</xmax>
+			<ymax>136</ymax>
+		</bndbox>
+	</object>
+</annotation>

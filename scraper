@@ -9,7 +9,6 @@ from googlesearch import search
 import requests
 import random
 from fake_useragent import UserAgent
-import signal
 import unidecode
 import numpy as np
 import sys
@@ -41,13 +40,21 @@ with detection_graph.as_default():
 category_index = label_map_util.create_category_index_from_labelmap(PATH_TO_LABELS, use_display_name=True)
 
 def get_rivgosh():
-    pagerivgosh = requests.get('https://shop.rivegauche.ru/search?text=' + urllib.parse.quote_plus(name) + '#rgshare=' + urllib.parse.quote_plus(name), timeout=10)
+    try:
+        pagerivgosh = requests.get('https://shop.rivegauche.ru/search?text=' + urllib.parse.quote_plus(name) + '#rgshare=' + urllib.parse.quote_plus(name), timeout=10)
+    except:
+        return None
     rivgosh_soup = BeautifulSoup(pagerivgosh.content, 'html.parser')
+    if(rivgosh_soup.find("span", {"class": "price"}) == None):
+        return None
     return rivgosh_soup.find("span", {"class": "price"}).text
 
 
 def get_ildebote():
-    pageilde = requests.get('https://iledebeaute.ru/shop/search?q=' + urllib.parse.quote_plus(name), timeout=10, headers=headers)
+    try:
+        pageilde = requests.get('https://iledebeaute.ru/shop/search?q=' + urllib.parse.quote_plus(name), timeout=10, headers=headers)
+    except:
+        return None
     ilde_soup = BeautifulSoup(pageilde.content, 'html.parser')
     if(ilde_soup.find(string = 'ничего не найдено.') != None):
         return None
@@ -56,7 +63,10 @@ def get_ildebote():
     return None
 
 def get_goldenapple():
-    pageilde = requests.get('https://goldapple.ru/catalogsearch/result/?q=' + urllib.parse.quote_plus(name), timeout=10, headers=headers)
+    try:
+        pageilde = requests.get('https://goldapple.ru/catalogsearch/result/?q=' + urllib.parse.quote_plus(name), timeout=10, headers=headers)
+    except:
+        return None
     ilde_soup = BeautifulSoup(pageilde.content, 'html.parser')
     if (ilde_soup.find("span", {"class": "price"}) == None):
         return None
@@ -179,7 +189,7 @@ keywords = ['eyeshadow', 'lipstick', 'lipgloss', 'lip liner', 'highlighter',
                         'Lip liner', 'Highlighter', 'Bronzer', 'Foundation', 'Concealer',
                         'Mascara', 'Eyeliner', 'Blush','Primer', 'Powder', 'Contouring',
                         'Eye pencil', 'Pigment', 'Glitter', 'BB creme', 'CC creme', 'Brow',
-                        'LIPS', 'Lips', 'lips', 'EYES', 'Eyes', 'eyes', 'Тени', "тени",
+                        'LIPS', 'Lips', 'lips', 'EYES', 'Eyes', 'eyes', 'lip', 'LIP', 'Lip', 'Тени', "тени",
                         "Помада", "помада", "Помады", "помады", "Блеск", "блеск", "Блески",
                         "блески", "Карандаш для губ", "карандаш для губ"]
 
@@ -218,19 +228,25 @@ def delete_small_pics(pics):
                     print("oops")
             else:
                 src = prefix + website + postfix + '/' + src
-                img_data = requests.get(src).content
-
-        with open('aaa' + extens, 'wb') as handler:
-            handler.write(img_data)
+                try:
+                    img_data = requests.get(src).content
+                except:
+                    continue
 
         try:
-            im = Image.open('aaa' + extens)
+            with open('aaa' + extens, 'wb') as handler:
+                handler.write(img_data)
 
-            width, height = im.size
-            pics_with_size.append((src, width, height))
+            try:
+                im = Image.open('aaa' + extens)
+
+                width, height = im.size
+                pics_with_size.append((src, width, height))
+            except:
+                if src in pics:
+                    pics.remove(src)
         except:
-            if src in pics:
-                pics.remove(src)
+            print('idk man')
 
     w = 600
     h = 600
@@ -404,6 +420,31 @@ for company in companies:
         except:
             continue
 
+        website_full_name = site
+        if website_full_name[:8] == 'https://':
+            prefix = 'https://'
+            prfx_len = 8
+        else:
+            prefix = 'http://'
+            prfx_len = 7
+
+        rest = website_full_name[prfx_len:]
+        if rest[:4] == 'www.':
+            rest = rest[4:]
+        website = ''
+        for i in range(0, len(rest.split('.')) - 1):
+            if website == '':
+                website = website + rest.split('.')[i]
+            else:
+                website = website + "." + rest.split('.')[i]
+
+        postfix = rest.split(website)[1].split('/')[0]
+        if postfix != '.com' and postfix != '.biz' and postfix != '.ru' and postfix != '.us':
+            continue
+
+        if website == 'amazon' or website == 'twitter' or website == 'podrygka' or re.match('yahoo', website) or website == 'youtube':
+            continue
+
         site_soup = BeautifulSoup(data.text, features='lxml')
 
         if site_soup.find(string="brands") == None and site_soup.find(string="Brands") == None \
@@ -539,15 +580,21 @@ for company in companies:
     r = None
     if sitemap_url != '':
         try:
+            if(not sitemap_url.endswith('l')):
+                sitemap_url = sitemap_url[:-1]
             r = requests.get(sitemap_url, timeout = 10, headers = headers)
         except:
             sitemap_url = ''
     if sitemap_url == '':
         sitemap_url = prefix + website  + postfix + "/sitemap.xml"
         try:
+            if (not sitemap_url.endswith('l')):
+                sitemap_url = sitemap_url.sub[:-1]
             r = requests.get(prefix + website  + postfix + "/sitemap.xml", timeout = 10, headers = headers)
         except:
             try:
+                if (not sitemap_url.endswith('l')):
+                    sitemap_url = sitemap_url.sub[:-1]
                 r = requests.get(prefix + 'www.' + website + postfix + "/sitemap.xml", timeout=10, headers=headers)
             except:
                 sitemap_url = ''
@@ -563,7 +610,7 @@ for company in companies:
         if sitemapindex != None:
             sitemap_search = sitemap_soup.find('loc', text=re.compile('product'))
             if sitemap_search == None:
-                sitemap_search = sitemap_soup.find('loc', text=re.compile('(en)(.*)(store|beauty|makeup)?'))
+                sitemap_search = sitemap_soup.find('loc', text=re.compile('(us)(.*)(store|beauty|makeup)?'))
             if sitemap_search == None:
                 sitemap_search = sitemap_soup.find("loc")
             sitemap_url = sitemap_search.text
@@ -583,8 +630,6 @@ for company in companies:
             for url in url_xmls:
                 internal_urls.append(url.text)
         all_items=[]
-        signal.signal(signal.SIGALRM, handler)
-        signal.alarm(300)
 
     #если карты сайта не оказалось
     try:
@@ -601,7 +646,7 @@ for company in companies:
                         soup = BeautifulSoup(page.content, 'html.parser')
                         potential_urls = soup.find_all('a')
                         for url in potential_urls:
-                            if url.has_attr('href') and (prefix+ 'www.' + website+postfix in url['href'] or prefix+website+postfix in url['href'] or url['href'][0] == '/'):
+                            if url.has_attr('href') and url['href'] != '' and (prefix+ 'www.' + website in url['href'] or prefix+website in url['href'] or url['href'][0] == '/'):
                                 if (url['href'] not in visited_urls and url['href'] not in for_visiting_urls
                                         and prefix + website  + postfix + url['href'] not in for_visiting_urls
                                         and prefix + website  + postfix + url['href'] not in visited_urls):
@@ -610,7 +655,8 @@ for company in companies:
                                             if url['href'][0] == '/':
                                                 url['href'] = prefix + website  + postfix + url['href']
                                             if prefix+website+postfix in url['href']:
-                                                for_visiting_urls.append(url['href'])
+                                                if (len(url['href'].split('/')[3]) == 2 or re.match('..-..', url['href'].split('/')[3])) and 'int' in url['href'].split('/')[3].lower() or 'us' in url['href'].split('/')[3].lower():
+                                                    for_visiting_urls.append(url['href'])
                     del for_visiting_urls[0]
                 except:
                     del for_visiting_urls[0]
@@ -619,11 +665,14 @@ for company in companies:
     except Exception as error:
         print(error)
 
-    signal.alarm(0)
 
 
 
     for url in internal_urls:
+
+        if(len(url.split('/')) > 3):
+            if((len(url.split('/')[3]) == 2 or re.match('..(-|_)..', url.split('/')[3])) and 'us' not in url.split('/')[3] and 'uk' not in url.split('/')[3]):
+                continue
 
         print("--------------------------------------------------------")
         print("looking at " + url)
@@ -647,16 +696,16 @@ for company in companies:
             prices = [e for e in price_elements if e.text != ''
                       and not e.find_parents(attrs={"class": re.compile("header")})
                       and not e.find_parents(attrs={"class": re.compile("cart")})]
+            prices.sort(key=len)
             if(prices != []):
                 for pr in prices:
                     temp = pr.text
                     temp.replace(" ", "")
                     temp = ''.join(temp.splitlines())
-                    if temp != "" and ('$' in temp or '.' in temp):
-                        price = temp
+                    if temp != "" and bool(re.search(r'\d', temp)):
+                        price = re.sub("[^0-9|.]", "", temp)
                         break
                 if price != None:
-                    print(price)
                     price_flg = True
                 else:
                     price_flg = False
@@ -666,11 +715,10 @@ for company in companies:
                     temp = pr.text
                     temp.replace(" ", "")
                     temp = ''.join(temp.splitlines())
-                    if temp != "" and '.' in temp:
-                        price = temp
+                    if temp != "" and bool(re.search(r'\d', temp)):
+                        price = re.sub("[^0-9|.]", "", temp)
                         break
                 if price != None:
-                    print(price)
                     price_flg = True
                 else:
                     price_flg = False
@@ -680,10 +728,13 @@ for company in companies:
             print("с этой страницы цена не распарсилась")
         if price != None:
             pic_flg = True
-            price = re.sub("\D", "", price)
+            filter(lambda x: x.isdigit() or x == ',', price)
+            if (price[-2:] == "00"):
+                price = price[:-2] + ',' + price[-2:]
 
+            print(price)
 
-
+            # price = re.sub("\D", "", price)
 
 
 
@@ -715,18 +766,18 @@ for company in companies:
             print(name)
             name_flg = True
 
-
-
-
-
-
+        import time
         #парсим картинки
         if name_flg:
             imgs = soup.find_all("img", alt=re.compile(name))
             pics = []
             for img in imgs:
-                if img.has_attr('src'):
-                    pics.append(img['src'])
+                # if img.has_attr('src'):
+                #     pics.append(img['src'])
+                for attr in img.attrs.values():
+                    if type(attr).__name__ != 'list':
+                        if '.jpg' in attr or '.jpeg' in attr or '.png' in attr:
+                            pics.append(attr)
             pics = delete_small_pics(pics)
 
             if pics == [] and name != None:
@@ -754,10 +805,17 @@ for company in companies:
                 pics = delete_small_pics(pics)
 
             if pics == []:
-                imgs = soup.find_all('img')
+                time.sleep(3)
+
+                imgs = soup.find_all('img', recursive=True)
                 for img in imgs:
-                    if img.has_attr('src'):
-                        pics.append(img['src'])
+                    for attr in img.attrs.values():
+                        if type(attr).__name__ != 'list':
+                            if '.jpg' in attr or '.jpeg' in attr or '.png' in attr:
+                                pics.append(attr)
+                    # if img.has_attr('src'):
+                    #     pics.append(img['src'])
+
 
                 pics = delete_small_pics(pics)
 
@@ -777,9 +835,9 @@ for company in companies:
         desc_flg = False
         if name_flg:
             #описание
-            descriptions = soup.find_all(_class = re.compile('description'))
+            descriptions = soup.find_all(True, {'class' : re.compile('description')})
             if descriptions == []:
-                descriptions = soup.find_all(id=re.compile('description'))
+                descriptions = soup.find_all(True, {'id' : re.compile('description')})
             if descriptions == []:
                 descriptions = soup.find_all('p')
             if descriptions != []:
@@ -812,6 +870,18 @@ for company in companies:
                                 category = keyword.lower()
                             break
             if category == '':
+                for keyword in keywords:
+                    if page_title.string != None:
+                        if keyword in page_title.string:
+                            if desc != None:
+                                if ('brush' in desc or 'Brush' in desc):
+                                    category = 'Brush'
+                                else:
+                                    category = keyword.lower()
+                            else:
+                                category = keyword.lower()
+                            break
+            if category == '':
                 category = 'other'
             print(category)
 
@@ -819,36 +889,77 @@ for company in companies:
 
         shades_flg=False
         #оттенки
-        if pic_flg and name_flg and price_flg:
-            shades = []
-            img_tag = soup.find_all('img')
-            imgs = []
-            for el in img_tag:
-                if el.has_attr('src'):
-                    imgs.append(el['src'])
-            shades = shades_from_list_of_urls(imgs)
+        # if pic_flg and name_flg and price_flg:
+        #     shades = []
+        #     img_tag = soup.find_all('img')
+        #     imgs = []
+        #     for el in img_tag:
+        #         if el.has_attr('src'):
+        #             imgs.append(el['src'])
+        #     shades = shades_from_list_of_urls(imgs)
+        #
+        #     if shades == []:
+        #         results = soup.findAll(True, {"background-color": re.compile('#')})
+        #         additional = soup.findAll(True, {"style": re.compile('background-color:#')})
+        #         for el in additional:
+        #             hex = re.match('(?<=background-color:#).{6}', el['style'])
+        #             if hex != None:
+        #                 shades.append(hex)
+        #         for res in results:
+        #             if res['background-color'] != None:
+        #                 shades.append(res['background-color'])
+        #
+        #     if shades == []:
+        #         els = soup.find_all('a', {'data-url':True})
+        #         for el in els:
+        #             shades.append(el['data-url'])
+        #     if shades != []:
+        #         shades_flg = True
+        #         shade_colors = []
+        #         for shade in shades:
+        #             src = shade
+        #             if src == '':
+        #                 continue
+        #             if src[0] == '/' and src[1] == '/':
+        #                 src = prefix + src[2:]
+        #             if src[0] == '/':
+        #                 src = prefix + website + postfix + src
+        #
+        #             extens = src.split('?')[0][-4:]
+        #             if extens != '.png' and extens != '.jpg' and extens != 'jpeg':
+        #                 continue
+        #             if extens == 'jpeg':
+        #                 extens = '.jpeg'
+        #
+        #             try:
+        #                 img_data = requests.get(src).content
+        #             except:
+        #                 if src[:4] == 'http':
+        #                     src_els = src.split('://')
+        #                     src = src_els[0] + '://www.' + src_els[1]
+        #                     img_data = requests.get(src).content
+        #                 else:
+        #                     src = prefix + website + postfix + '/' + src
+        #                     img_data = requests.get(src).content
+        #
+        #             with open('aaa' + extens, 'wb') as handler:
+        #                 handler.write(img_data)
+        #
+        #
+        #             image = Image.open('aaa' + extens)
+        #             shade = image.convert('RGB')
+        #             colors = shade.getcolors(maxcolors=10000)
+        #             colors.sort(key=operator.itemgetter(0), reverse=True)
+        #             colors = colors[:3]
+        #             for i in range(0, len(colors) - 1):
+        #                 if colors[i][1][0] + colors[i][1][1] + colors[i][1][2] >= 750 \
+        #                         or colors[i][1][0] + colors[i][1][1] + colors[i][1][2] <= 15:
+        #                     del colors[i]
+        #             if colors[0] != None:
+        #                 shade_colors.append(colors[0])
+        #         shades_flg = False
+        #         print(shade_colors)
 
-            if shades == []:
-                results = soup.findAll(True, {"background-color": re.compile('#')})
-                additional = soup.findAll(True, {"style": re.compile('background-color:#')})
-                for el in additional:
-                    hex = re.match('(?<=background-color:#).{6}', el['style'])
-                    if hex != None:
-                        shades.append(hex)
-                for res in results:
-                    if res['background-color'] != None:
-                        shades.append(res['background-color'])
-
-            if shades == []:
-                els = soup.find_all('a', {'data-url':True})
-                for el in els:
-                    shades.append(el['data-url'])
-            if shades != []:
-                shades_flg = True
-                print(shades)
-            else:
-                shades_flg = False
-                print("с этой страницы оттенки не распарсились")
 
         color_flag = False
         if name_flg:
@@ -883,6 +994,10 @@ for company in companies:
 
                 try:
                     image = Image.open('aaa' + extens)
+                    if(extens != '.jpg'):
+                        rgb_im = image.convert('RGB')
+                        rgb_im.save('aaa.jpg')
+                    image = Image.open('aaa' + '.jpg')
                     image_np = load_image_into_numpy_array(image)
                     image_np_expanded = np.expand_dims(image_np, axis=0)
                     output_dict = run_inference_for_single_image(image_np_expanded, detection_graph)
@@ -897,12 +1012,9 @@ for company in companies:
                     ymax = box[2] * height
                     xmax = box[3] * width
 
-                    # print(box[1]*width, box[0]*height, width-box[3]*width, height-box[2]*height)
                     cropped = image.crop((xmin, ymin, xmax, ymax))
-                    # border = (box[0]*width, box[2]*height, box[1]*width, box[3]*height)
-                    # cropped = ImageOps.crop(image, border)
                     cropped = cropped.convert('RGB')
-                    colors = cropped.getcolors(maxcolors=10000)
+                    colors = cropped.getcolors(maxcolors=cropped.size[0]*cropped.size[1])
                     colors.sort(key=operator.itemgetter(0), reverse=True)
                     colors = colors[:3]
                     for i in range(0, len(colors) - 1):
@@ -917,6 +1029,10 @@ for company in companies:
 
 
 
+        if price_flg:
+            price = price.replace('.', ",")
+            price = price.replace(',,', ",")
+            price = price.replace('.,', ",")
         company_name = company_name.replace('.', " ")
         company_name = company_name.replace('/', " ")
         if name != None:
@@ -925,18 +1041,20 @@ for company in companies:
             name = name.replace('%', " ")
 
 
-        old_price = ref.child('products').child(name + "Ф" + company_name + price).child('price').get()
-        if(old_price != None):
-            if (int(re.sub('[^0-9]','', old_price)) > int(re.sub('[^0-9]','', price))):
-                ref.child('sale').update({name + "Ф" + company_name + price: {'old': old_price, 'new': price}})
-
-        old_product = ref.child('products').child(name + "Ф" + company_name + price).get()
-        if (old_product == {}):
-            ref.child('new').update({name + "Ф" + company_name + price: 0})
-
 
         dict = {}
         if (name_flg and pic_flg and price_flg):
+
+            old_price = ref.child('products').child(name + "Ф" + company_name + price).child('price').get()
+            if (old_price != None):
+                if (int(re.sub('[^0-9]', '', old_price)) > int(re.sub('[^0-9]', '', price))):
+                    ref.child('sale').update({name + "Ф" + company_name + price: {'old': old_price, 'new': price}})
+
+            old_product = ref.child('products').child(name + "Ф" + company_name + price).get()
+            if (old_product == {}):
+                ref.child('new').update({name + "Ф" + company_name + price: 0})
+
+            dict['category'] = category
             dict['pics'] = pics
             dict['name'] = name
             dict['price'] = price
@@ -944,8 +1062,8 @@ for company in companies:
             dict['numReviews'] = '0'
             if (desc_flg):
                 dict['description'] = desc
-            if (shades_flg):
-                dict['shades'] = shades
+            # if (shades_flg):
+            #     dict['shades'] = shade_colors
             if (color_flag):
                 dict['r'] = color[0]
                 dict['g'] = color[1]
