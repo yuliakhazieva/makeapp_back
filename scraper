@@ -39,15 +39,16 @@ with detection_graph.as_default():
 
 category_index = label_map_util.create_category_index_from_labelmap(PATH_TO_LABELS, use_display_name=True)
 
-def get_rivgosh():
+def get_elize():
     try:
-        pagerivgosh = requests.get('https://shop.rivegauche.ru/search?text=' + urllib.parse.quote_plus(name) + '#rgshare=' + urllib.parse.quote_plus(name), timeout=10)
+        pageelize = requests.get('https://elize.ru/search/' + urllib.parse.quote_plus(name), timeout=10)
     except:
         return None
-    rivgosh_soup = BeautifulSoup(pagerivgosh.content, 'html.parser')
-    if(rivgosh_soup.find("span", {"class": "price"}) == None):
+    elize_soup = BeautifulSoup(pageelize.content, 'html.parser')
+    pr = elize_soup.find('span', {'class':'price'})
+    if(pr == None):
         return None
-    return rivgosh_soup.find("span", {"class": "price"}).text
+    return pr.text
 
 
 def get_ildebote():
@@ -58,8 +59,8 @@ def get_ildebote():
     ilde_soup = BeautifulSoup(pageilde.content, 'html.parser')
     if(ilde_soup.find(string = 'ничего не найдено.') != None):
         return None
-    if(name in ilde_soup.find('p', {'class': 'b-showcase__item__link'}).text):
-        return ilde_soup.find("span", {"class": "def"}).text
+    if(ilde_soup.find_all('a', {'title': re.compile(name)}) != []):
+        return ilde_soup.find_all("span", {"class": "def"})[24].text
     return None
 
 def get_goldenapple():
@@ -68,7 +69,7 @@ def get_goldenapple():
     except:
         return None
     ilde_soup = BeautifulSoup(pageilde.content, 'html.parser')
-    if (ilde_soup.find("span", {"class": "price"}) == None):
+    if (ilde_soup.find("span", {"class": "catalog-product-name-span"}) != name):
         return None
     return ilde_soup.find("span", {"class": "price"}).text
 
@@ -654,8 +655,8 @@ for company in companies:
                                         if url['href'][0] != '#':
                                             if url['href'][0] == '/':
                                                 url['href'] = prefix + website  + postfix + url['href']
-                                            if prefix+website+postfix in url['href']:
-                                                if (len(url['href'].split('/')[3]) == 2 or re.match('..-..', url['href'].split('/')[3])) and 'int' in url['href'].split('/')[3].lower() or 'us' in url['href'].split('/')[3].lower():
+                                            if website+postfix in url['href']:
+                                                if (len(url['href'].split('/')[3]) == 2 or re.match('..-..', url['href'].split('/')[3]) != None) and 'int' in url['href'].split('/')[3].lower() or 'us' in url['href'].split('/')[3].lower() or (len(url['href'].split('/')[3]) != 2 and re.match('..-..', url['href'].split('/')[3]) == None):
                                                     for_visiting_urls.append(url['href'])
                     del for_visiting_urls[0]
                 except:
@@ -883,6 +884,8 @@ for company in companies:
                             break
             if category == '':
                 category = 'other'
+            if category == 'lip':
+                category = 'lipstick'
             print(category)
 
 
@@ -984,7 +987,10 @@ for company in companies:
                     if src[:4] == 'http':
                         src_els = src.split('://')
                         src = src_els[0] + '://www.' + src_els[1]
-                        img_data = requests.get(src).content
+                        try:
+                            img_data = requests.get(src).content
+                        except:
+                            continue
                     else:
                         src = prefix + website + postfix + '/' + src
                         img_data = requests.get(src).content
@@ -1039,20 +1045,28 @@ for company in companies:
             name = name.replace('.', " ")
             name = name.replace('/', " ")
             name = name.replace('%', " ")
+            name = name.replace('®', "")
+            name = name.replace('$', "")
 
 
 
         dict = {}
         if (name_flg and pic_flg and price_flg):
 
-            old_price = ref.child('products').child(name + "Ф" + company_name + price).child('price').get()
+            try:
+                old_price = ref.child('products').child(name + "Ф" + company_name + price).child('price').get()
+            except:
+                print("a")
             if (old_price != None):
                 if (int(re.sub('[^0-9]', '', old_price)) > int(re.sub('[^0-9]', '', price))):
                     ref.child('sale').update({name + "Ф" + company_name + price: {'old': old_price, 'new': price}})
 
-            old_product = ref.child('products').child(name + "Ф" + company_name + price).get()
-            if (old_product == {}):
-                ref.child('new').update({name + "Ф" + company_name + price: 0})
+            try:
+                old_product = ref.child('products').child(name + "Ф" + company_name + price).get()
+                if (old_product == {}):
+                    ref.child('new').update({name + "Ф" + company_name + price: 0})
+            except:
+                print("oops")
 
             dict['category'] = category
             dict['pics'] = pics
@@ -1073,11 +1087,11 @@ for company in companies:
                 dict['g'] = 0
                 dict['b'] = 0
 
-            rivgosh = get_rivgosh()
-            if(rivgosh == None):
-                dict['rivgosh'] = 'N/A'
+            elize = get_elize()
+            if(elize == None):
+                dict['elize'] = 'N/A'
             else:
-                dict['rivgosh'] = rivgosh
+                dict['elize'] = elize
 
             ilde = get_ildebote()
             if(ilde == None):
